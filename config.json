@@ -1,0 +1,41 @@
+{
+  "searches": [
+    {
+      "name": "iPhone 11",
+      "url": "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc"
+    },
+    {
+      "name": "iPhone 12",
+      "url": "https://www.olx.pl/elektronika/telefony/q-iphone-12/?search%5Border%5D=created_at%3Adesc"
+    },
+    {
+      "name": "iPhone 13",
+      "url": "https://www.olx.pl/elektronika/telefony/q-iphone-13/?search%5Border%5D=created_at%3Adesc"
+    }
+  ],
+  "include_title_regex": "\\biphone\\s*(11|12|13)\\b",
+  "exclude_title_words": [
+    "etui",
+    "case",
+    "pokrowiec",
+    "szkło",
+    "szklo",
+    "folia",
+    "ładowarka",
+    "ladowarka",
+    "kabel",
+    "obudowa",
+    "sama bateria",
+    "na części",
+    "na czesci",
+    "kupię",
+    "kupie",
+    "zamienię",
+    "zamienie"
+  ],
+  "bootstrap_without_alerts": true,
+  "request_timeout_seconds": 20,
+  "delay_between_searches_seconds": 1.5,
+  "poll_interval_seconds": 90,
+  "max_remembered_ids": 12000
+}
