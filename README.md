@@ -1,3 +1,9 @@
+## Źródło ofert: publiczny kanał RSS
+
+Monitor korzysta z publicznego generatora OLX RSS pod adresem https://tedeelock.com/ zamiast bezpośrednio pobierać strony OLX z GitHub Actions. Generator otrzymuje wyłącznie publiczny link wyszukiwania. Webhook Discorda pozostaje w GitHub Secrets i nie jest przekazywany generatorowi.
+
+To niezależny, zewnętrzny serwis. Nie ma potwierdzonej gwarancji dostępności, kompletności ani świeżości danych. Sprawdzanie co 5 minut nie gwarantuje, że samo źródło odświeża dane w tym rytmie. Pierwszy przebieg ustala historię bez alertów; późniejsze wysyłają nowo wykryte ID. Wyniki mogą obejmować promowane oferty. Dane są ograniczone do ofert udostępnionych przez kanał.
+
 ## Stan wdrożenia i test Discorda
 
 Ostatni potwierdzony przebieg z GitHub Actions zwrócił HTTP 403 dla wszystkich trzech wyszukiwań. Te poprawki nie usuwają odmowy dostępu OLX. Nie uznawaj projektu za uruchomiony, dopóki odczyt ofert i dostarczenie powiadomienia nie zostaną potwierdzone na GitHubie.

@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -177,8 +178,40 @@ def parse_olx_html(page_html: str, source_name: str = "OLX") -> list[Listing]:
     return listings
 
 
+def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
+    root = ET.fromstring(payload)
+    if root.tag != "rss" or root.find("channel") is None:
+        raise ValueError("Źródło nie zwróciło kanału RSS.")
+    listings = []
+    for item in root.findall("./channel/item"):
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        parts = urlsplit(link)
+        if parts.scheme != "https" or parts.hostname not in {"olx.pl", OLX_HOST} or "/d/oferta/" not in parts.path:
+            continue
+        if not title:
+            continue
+        detail = BeautifulSoup(item.findtext("description") or "", "html.parser")
+        price = _text(detail.select_one("h1"))
+        price = re.sub(r"^Cena:\s*", "", price) or "Cena niepodana"
+        location = _text(detail.select_one("p"))
+        image = detail.select_one("img")
+        image_url = image.get("src", "") if image else ""
+        if urlsplit(image_url).scheme != "https":
+            image_url = ""
+        url = canonical_url(link)
+        listings.append(Listing(stable_id(url), title, url, price, location, image_url, source_name))
+    if not listings:
+        raise RuntimeError("Kanał RSS nie zawiera poprawnych ofert. Historia pozostaje bez zmian.")
+    return listings
+
+
 def fetch_search(session: requests.Session, search: dict[str, str], timeout: int) -> list[Listing]:
     url = search["url"]
+    if search.get("source") == "rss":
+        response = session.get("https://tedeelock.com/src/get.php", params={"url": url}, timeout=timeout)
+        response.raise_for_status()
+        return parse_rss(response.text, search.get("name", "OLX") + " · RSS")
     response = session.get(url, timeout=timeout)
     if response.status_code in (403, 429):
         raise RuntimeError(f"OLX odpowiedział kodem {response.status_code}; pomijam to sprawdzenie bez obchodzenia blokady.")
