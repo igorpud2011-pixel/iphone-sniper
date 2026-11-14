@@ -1,3 +1,11 @@
+## Stan wdrożenia i test Discorda
+
+Ostatni potwierdzony przebieg z GitHub Actions zwrócił HTTP 403 dla wszystkich trzech wyszukiwań. Te poprawki nie usuwają odmowy dostępu OLX. Nie uznawaj projektu za uruchomiony, dopóki odczyt ofert i dostarczenie powiadomienia nie zostaną potwierdzone na GitHubie.
+
+W Actions wybierz `iPhone Sniper OLX` → `Run workflow` i zaznacz `test_discord`, aby wysłać pojedynczą wiadomość testową bez pobierania ofert. Webhook pozostaje w sekrecie `DISCORD_WEBHOOK_URL`. Test działa niezależnie od blokady OLX i nie zmienia historii ofert.
+
+Poprawiona wersja zapamiętuje pierwsze poprawne skanowanie osobno dla każdego wyszukiwania, zachowuje kolejność historii, ponawia nieudane alerty i oznacza częściowe błędy jako nieudany przebieg. Stan poprawnie obsłużonych ofert zapisuje się także po częściowym błędzie.
+
 # iPhone Sniper — alerty o nowych iPhone'ach z OLX
 
 Bot sprawdza zapisane wyszukiwania OLX i wysyła nowe pasujące ogłoszenia na Discorda, Telegram albo oba kanały. Zapamiętuje ID ofert, żeby nie wysyłać tych samych ogłoszeń przy każdym sprawdzeniu.

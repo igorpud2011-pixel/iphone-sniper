@@ -70,7 +70,8 @@ def load_state() -> dict[str, Any]:
 def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     ids = list(dict.fromkeys(state.get("seen_ids", [])))[-max_seen:]
-    payload = {"initialized": bool(state.get("initialized", False)), "seen_ids": ids}
+    payload = {"initialized": bool(state.get("initialized", False)), "seen_ids": ids,
+               "initialized_searches": state.get("initialized_searches", [])}
     tmp = STATE_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -214,7 +215,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     }
     if listing.image_url:
         embed["thumbnail"] = {"url": listing.image_url}
-    response = requests.post(webhook_url, json={"embeds": [embed]}, timeout=timeout)
+    response = requests.post(webhook_url, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
     response.raise_for_status()
 
 
@@ -241,14 +242,14 @@ def send_alert(listing: Listing, timeout: int) -> bool:
             results.append(True)
         except Exception as exc:  # continue to the other configured channel
             results.append(False)
-            errors.append(f"Discord: {exc}")
+            errors.append(f"Discord: {type(exc).__name__}")
     if telegram_token and telegram_chat:
         try:
             send_telegram(telegram_token, telegram_chat, listing, timeout)
             results.append(True)
         except Exception as exc:
             results.append(False)
-            errors.append(f"Telegram: {exc}")
+            errors.append(f"Telegram: {type(exc).__name__}")
     if errors:
         LOG.error("Błąd powiadomienia dla %s: %s", listing.listing_id, "; ".join(errors))
     if not results:
@@ -261,7 +262,11 @@ def send_alert(listing: Listing, timeout: int) -> bool:
 def run_once() -> int:
     config = load_config()
     state = load_state()
-    seen = set(str(x) for x in state.get("seen_ids", []))
+    ordered_seen = list(dict.fromkeys(str(x) for x in state.get("seen_ids", [])))
+    seen = set(ordered_seen)
+    initialized_searches = set(state.get("initialized_searches", []))
+    if "initialized_searches" not in state and state.get("initialized"):
+        initialized_searches.update(search["url"] for search in config["searches"])
     session = requests.Session()
     session.headers.update({
         "User-Agent": "iPhoneSniper/1.0 (personal listing alert; contact: local-user)",
@@ -275,6 +280,8 @@ def run_once() -> int:
     for index, search in enumerate(config["searches"]):
         try:
             listings = fetch_search(session, search, int(config.get("request_timeout_seconds", 20)))
+            bootstrap = search["url"] not in initialized_searches and config.get("bootstrap_without_alerts", True)
+            initialized_searches.add(search["url"])
             successful_searches += 1
             LOG.info("%s: odczytano %d ofert.", search.get("name", "OLX"), len(listings))
             for listing in listings:
@@ -282,7 +289,9 @@ def run_once() -> int:
                     continue
                 seen.add(listing.listing_id)
                 fresh_ids.append(listing.listing_id)
-                if is_flip_candidate(listing, config):
+                if bootstrap:
+                    pass
+                elif is_flip_candidate(listing, config):
                     found.append(listing)
         except Exception as exc:
             LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
@@ -292,13 +301,6 @@ def run_once() -> int:
     if successful_searches == 0:
         LOG.error("Żadne wyszukiwanie nie zadziałało. Stan pozostaje bez zmian.")
         return 2
-
-    if not state.get("initialized") and config.get("bootstrap_without_alerts", True):
-        state["initialized"] = True
-        state["seen_ids"] = list(seen)
-        save_state(state, int(config.get("max_remembered_ids", 12000)))
-        LOG.info("Pierwsze uruchomienie: zapisano %d istniejących ofert. Alerty będą dotyczyć nowych publikacji.", len(seen))
-        return 0
 
     # Do not advance the saved state for a listing if every configured notifier failed.
     successfully_notified: set[str] = set()
@@ -312,24 +314,40 @@ def run_once() -> int:
 
     # Non-matching results can be marked seen immediately. Matching items are stored only after
     # at least one channel confirms the send, so temporary notification errors can be retried.
-    state_seen = set(str(x) for x in state.get("seen_ids", []))
+    state_seen = set(ordered_seen)
     for listing_id in fresh_ids:
         candidate = next((x for x in found if x.listing_id == listing_id), None)
         if candidate is None or listing_id in successfully_notified:
-            state_seen.add(listing_id)
+            if listing_id not in state_seen:
+                state_seen.add(listing_id)
+                ordered_seen.append(listing_id)
     state["initialized"] = True
-    state["seen_ids"] = list(state_seen)
+    state["seen_ids"] = ordered_seen
+    state["initialized_searches"] = sorted(initialized_searches)
     save_state(state, int(config.get("max_remembered_ids", 12000)))
     LOG.info("Koniec sprawdzania. Nowe oferty pasujące do iPhone'ów: %d; wysłane alerty: %d.", len(found), len(successfully_notified))
-    return 0
+    return 0 if len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Monitor nowych ogłoszeń iPhone na OLX.")
     parser.add_argument("--loop", action="store_true", help="Pracuj stale, zamiast wykonać jedno sprawdzenie.")
+    parser.add_argument("--test-discord", action="store_true", help="Wyślij pojedynczy test Discorda bez odczytu OLX.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
+    if args.test_discord:
+        webhook = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+        if not webhook:
+            LOG.error("Brak sekretu DISCORD_WEBHOOK_URL.")
+            return 1
+        try:
+            send_discord(webhook, Listing("test", "Test iPhone Sniper: Discord działa", "https://www.olx.pl", price="Wiadomość testowa, nie oferta"), 20)
+        except requests.RequestException as exc:
+            LOG.error("Test Discorda nieudany: %s", type(exc).__name__)
+            return 1
+        LOG.info("Discord potwierdził odbiór testu.")
+        return 0
     if not args.loop:
         return run_once()
 
