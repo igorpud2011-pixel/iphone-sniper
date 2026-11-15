@@ -505,7 +505,8 @@ def resale_estimate(listing: Listing) -> str:
     except (OSError, ValueError):
         return "Cennik niedostępny. Nie wyliczam zysku."
     model = detect_model(listing.title)
-    capacities = {int(n)*(1024 if unit.lower()=="tb" else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", listing.title, flags=re.IGNORECASE)}
+    capacity_title = re.sub(r"(?<=\d)(?=(?:32|64|128|256|512|1024|2048)\s*(?:GB|TB)\b)", " ", listing.title, flags=re.IGNORECASE)
+    capacities = {int(n)*(1024 if unit.lower()=="tb" else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", capacity_title, flags=re.IGNORECASE)}
     rows = [r for r in table["rows"] if r["model"]==model]
     exact = len(capacities)==1
     if exact:
