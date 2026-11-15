@@ -1,22 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{change,modelPanel,verify} from './discord-control.mjs';
+import worker,{change,modelPanel,verify,MODEL_IDS,expandModels} from './discord-control.mjs';
 const state={models:[11,12],city:'Bielsko-Biała',radius:30,min:0,max:null,enabled:true};
-test('model and price validation; state is immutable',()=>{
- assert.deepEqual(change(state,'modele',{lista:'15 11 15'}).models,[11,15]);
- assert.throws(()=>change(state,'modele',{lista:'16'}));
+test('catalog and exact models support old families',()=>{
+ assert.ok(change(state,'modele',{lista:'15 11 15'}).models.includes('11 pro max'));
+ assert.ok(change(state,'modele',{lista:'16'}).models.includes('16'));
+ assert.ok(change(state,'modele',{lista:'xs max, 16e'}).models.includes('xs max'));
+ assert.throws(()=>change(state,'modele',{lista:'nonsense'}));
  assert.throws(()=>change(state,'cena',{minimum:600,maksimum:500}));
  assert.equal(change(state,'pauza').enabled,false);
  assert.equal(state.enabled,true);
 });
-test('settings panel offers one toggle for every supported iPhone',()=>{
+test('all models appear once in multi-select lists within Discord limits',()=>{
  const panel=modelPanel(state);
- assert.match(panel.content,/\*\*Wybrane:\*\* iPhone 11 · iPhone 12/);
- assert.deepEqual(panel.components[0].components.map(button=>button.custom_id),[
-  'settings_model_11','settings_model_12','settings_model_13','settings_model_14','settings_model_15'
- ]);
- assert.equal(panel.components[0].components[0].label,'✓ iPhone 11');
- assert.equal(panel.components[0].components[2].label,'iPhone 13');
+ const menus=panel.components.filter(row=>row.components[0].type===3).map(row=>row.components[0]);
+ assert.equal(menus.length,3);
+ assert.deepEqual(menus.flatMap(m=>m.options.map(o=>o.value)),MODEL_IDS);
+ assert.equal(new Set(MODEL_IDS).size,MODEL_IDS.length);
+ for(const m of menus){assert.ok(m.options.length<=25);assert.ok(m.max_values<=25);}
+ assert.ok(menus.flatMap(m=>m.options).find(o=>o.value==='11 pro').default);
 });
 test('private settings endpoint denies anonymous requests',async()=>{
  const r=await worker.fetch(new Request('https://example.com/settings'),{SETTINGS_KEY:'test'},{});
@@ -31,4 +33,21 @@ test('Discord signature verifies body and timestamp',async()=>{
  assert.equal(await verify(req,body,pub),true);
  assert.equal(await verify(req,body+'x',pub),false);
  assert.equal(await verify(new Request(req,{headers:{'X-Signature-Timestamp':'1','X-Signature-Ed25519':signature}}),body,pub),false);
+});
+test('signed multi-select saves only its group and rejects other users',async()=>{
+ const keys=await crypto.subtle.generateKey('Ed25519',true,['sign','verify']);
+ const pub=Buffer.from(await crypto.subtle.exportKey('raw',keys.publicKey)).toString('hex');
+ let saved={...state,models:['16','11']}; const waits=[];
+ const env={OWNER_ID:'123',DISCORD_PUBLIC_KEY:pub,SETTINGS:{get:async()=>saved,put:async(k,v)=>{saved=JSON.parse(v);}}};
+ const oldFetch=globalThis.fetch;globalThis.fetch=async()=>new Response('{}');
+ async function send(user){
+  const body=JSON.stringify({type:3,data:{custom_id:'settings_select_0',values:['16e']},member:{user:{id:user}},application_id:'1',token:'test'});
+  const ts=String(Math.floor(Date.now()/1000));const sig=Buffer.from(await crypto.subtle.sign('Ed25519',keys.privateKey,new TextEncoder().encode(ts+body))).toString('hex');
+  return (await worker.fetch(new Request('https://example.com/interactions',{method:'POST',headers:{'X-Signature-Timestamp':ts,'X-Signature-Ed25519':sig},body}),env,{waitUntil:p=>waits.push(p)})).json();
+ }
+ try{
+  assert.equal((await send('wrong')).type,4);assert.deepEqual(saved.models,['16','11']);
+  assert.equal((await send('123')).type,6);await Promise.all(waits);
+  assert.deepEqual(saved.models,['11','16e']);
+ }finally{globalThis.fetch=oldFetch;}
 });

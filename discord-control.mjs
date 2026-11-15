@@ -1,20 +1,21 @@
+export const MODEL_IDS=["duo", "18 pro max", "18 pro", "17 pro max", "17 pro", "17", "17e", "air", "16 pro max", "16 pro", "16 plus", "16", "16e", "15 pro max", "15 pro", "15 plus", "15", "14 pro max", "14 pro", "14 plus", "14", "13 pro max", "13 pro", "13 mini", "13", "12 pro max", "12 pro", "12 mini", "12", "11 pro max", "11 pro", "11", "xs max", "xs", "xr", "x", "se 2022", "se 2020", "se 2016", "se", "8 plus", "8", "7 plus", "7", "6s plus", "6s", "6 plus", "6", "5s", "5c", "5", "4s", "4", "3gs", "3g", "2g"];
+export const expandModels = models => [...new Set(models.flatMap(n=>typeof n==='number'?MODEL_IDS.filter(m=>m.split(' ')[0]===String(n)):[String(n).toLowerCase()]))].filter(m=>MODEL_IDS.includes(m));
+const normalizeSettings = s => ({...s,models:expandModels(s.models)});
 // Cloudflare Worker: Discord interactions + private settings endpoint.
-const defaults = () => ({models:[11,12,13,14,15],city:'Bielsko-Biała',radius:30,min:0,max:null,enabled:true});
+const defaults = () => ({models:expandModels([11,12,13,14,15]),city:'Bielsko-Biała',radius:30,min:0,max:null,enabled:true});
 const json = (data,status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 const reply = content => json({type:4,data:{content,flags:64,allowed_mentions:{parse:[]}}});
-export const modelPanel = current => ({
- content:`## ⚙️ Ustawienia alertów OLX\n\n### Szukane modele\nKliknij przycisk, aby włączyć albo wyłączyć dany model.\n**Wybrane:** ${current.models.map(n=>`iPhone ${n}`).join(' · ')}\n\n### Lokalizacja\n📍 ${current.city} · do ${current.radius} km\n\n### Cena\n💰 ${current.min}–${current.max??'bez limitu'} zł\n\n### Monitoring\n${current.enabled?'🟢 Włączony':'⏸️ Wstrzymany'}\n\nZmiany zapisują się od razu. Nowe filtry zostaną użyte przy następnym skanie.`,
- components:[
-  {type:1,components:[11,12,13,14,15].map(n=>({type:2,custom_id:`settings_model_${n}`,label:`${current.models.includes(n)?'✓ ':''}iPhone ${n}`,style:current.models.includes(n)?1:2}))},
-  {type:1,components:[
-   {type:2,custom_id:'settings_location',label:'Miasto i promień',style:2},
-   {type:2,custom_id:'settings_price',label:'Zakres cen',style:2},
-   {type:2,custom_id:'settings_models_all',label:'Wszystkie modele',style:2,disabled:current.models.length===5},
-   {type:2,custom_id:'settings_monitor',label:current.enabled?'Wstrzymaj monitoring':'Włącz monitoring',style:current.enabled?2:3}
-  ]}
- ],
- allowed_mentions:{parse:[]}
-});
+export const modelPanel = raw => {
+ const current=normalizeSettings(raw);
+ const chunks=Array.from({length:Math.ceil(MODEL_IDS.length/25)},(_,i)=>MODEL_IDS.slice(i*25,i*25+25));
+ return {content:'',embeds:[{title:'⚙️ Centrum alertów iPhone',color:0x5865f2,description:'Rozwiń listy i zaznacz modele. W każdej liście możesz wybrać kilka pozycji. Zmiany zapisują się automatycznie.',fields:[
+ {name:'📱 Wybrane modele',value:current.models.map(m=>'iPhone '+m.toUpperCase().replace('PRO','Pro').replace('MAX','Max').replace('PLUS','Plus').replace('MINI','mini')).join(', ').slice(0,1024)||'Brak'},
+ {name:'📍 Obszar',value:`${current.city} · ${current.radius} km`,inline:true},
+ {name:'💰 Cena',value:`${current.min}–${current.max??'bez limitu'} zł`,inline:true},
+ {name:'Status',value:current.enabled?'🟢 Monitoring włączony':'⏸️ Monitoring wstrzymany',inline:true}],footer:{text:'Pierwszy skan nowego wyszukiwania ustala historię. Opóźnienie RSS może się różnić.'}}],
+ components:[...chunks.map((items,i)=>({type:1,components:[{type:3,custom_id:`settings_select_${i}`,placeholder:`Wybierz modele · lista ${i+1}/${chunks.length}`,min_values:0,max_values:items.length,options:items.map(m=>({label:'iPhone '+m.replace(/\b(pro|max|plus|air|duo|se|xs|xr|x)\b/g,x=>x==='pro'?'Pro':x==='max'?'Max':x==='plus'?'Plus':x==='air'?'Air':x==='duo'?'Duo':x.toUpperCase()),value:m,default:current.models.includes(m)}))}]})),
+ {type:1,components:[{type:2,custom_id:'settings_location',label:'📍 Lokalizacja',style:2},{type:2,custom_id:'settings_price',label:'💰 Cena',style:2},{type:2,custom_id:'settings_models_all',label:'Wszystkie',style:2},{type:2,custom_id:'settings_monitor',label:current.enabled?'⏸ Pauza':'▶ Wznów',style:current.enabled?2:3}]}],allowed_mentions:{parse:[]}};
+};
 const hex = x => {
   if (!/^(?:[a-f\d]{2})+$/i.test(x || '')) throw Error('hex');
   return Uint8Array.from(x.match(/../g),v=>parseInt(v,16));
@@ -30,9 +31,11 @@ export async function verify(request,body,key){
 export function change(current,name,options={}){
  const s=structuredClone(current);
  if(name==='modele'){
-  const models=[...new Set(String(options.lista||'').split(/[ ,;]+/).filter(Boolean).map(Number))];
-  if(!models.length || models.some(n=>!Number.isInteger(n)||n<11||n>15)) throw Error('Podaj modele od 11 do 15, np. 11 13 15.');
-  s.models=models.sort((a,b)=>a-b);
+  const values=String(options.lista||'').toLowerCase().replace(/iphone/g,'').trim();
+  const tokens=values.includes(',')?values.split(',').map(v=>v.trim()):values.split(/[ ;]+/);
+  const models=expandModels(tokens.map(v=>/^\d+$/.test(v)?Number(v):v));
+  if(!models.length)throw Error('Wybierz modele w /ustawienia lub podaj np. 11, 13 pro, 16e.');
+  s.models=models;
  }else if(name==='lokalizacja'){
   const city=String(options.miasto||'').trim();
   if(!/^[\p{L}\s-]{2,80}$/u.test(city)) throw Error('Niepoprawna nazwa miasta.');
@@ -52,7 +55,7 @@ export default {async fetch(request,env,ctx){
  const url=new URL(request.url);
  if(url.pathname==='/settings'&&request.method==='GET'){
   if(!env.SETTINGS_KEY || request.headers.get('Authorization')!==`Bearer ${env.SETTINGS_KEY}`)return json({error:'Unauthorized'},401);
-  return json(await env.SETTINGS.get('settings','json')||defaults());
+  return json(normalizeSettings(await env.SETTINGS.get('settings','json')||defaults()));
  }
  if(url.pathname!=='/interactions'||request.method!=='POST')return json({error:'Not found'},404);
  const body=await request.text();
@@ -71,15 +74,23 @@ export default {async fetch(request,env,ctx){
   }
   ctx.waitUntil((async()=>{
   const action=interaction.data?.custom_id||'';
-  const current=await env.SETTINGS.get('settings','json')||defaults();
+  const current=normalizeSettings(await env.SETTINGS.get('settings','json')||defaults());
   let next;
   const match=/^settings_model_(1[1-5])$/.exec(action);
-  if(match){
+  const select=/^settings_select_(\d+)$/.exec(action);
+  if(select){
+   const group=MODEL_IDS.slice(Number(select[1])*25,Number(select[1])*25+25);
+   const values=interaction.data.values||[];
+   if(!group.length||values.some(m=>!group.includes(m)))return;
+   const models=[...current.models.filter(m=>!group.includes(m)),...values];
+   if(!models.length)return;
+   next={...current,models};
+  }else if(match){
    const model=Number(match[1]);
    const models=current.models.includes(model)?current.models.filter(n=>n!==model):[...current.models,model].sort((a,b)=>a-b);
    if(!models.length)return;
    next={...current,models};
-  }else if(action==='settings_models_all')next={...current,models:[11,12,13,14,15]};
+  }else if(action==='settings_models_all')next={...current,models:[...MODEL_IDS]};
   else if(action==='settings_monitor')next={...current,enabled:!current.enabled};
   else return;
   await env.SETTINGS.put('settings',JSON.stringify(next));
@@ -99,7 +110,7 @@ export default {async fetch(request,env,ctx){
  ctx.waitUntil((async()=>{
   let message;
   try{
-   const current=await env.SETTINGS.get('settings','json')||defaults();
+   const current=normalizeSettings(await env.SETTINGS.get('settings','json')||defaults());
    if(name==='ustawienia'){
     const endpoint=`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`;
     const result=await fetch(endpoint,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(modelPanel(current))});

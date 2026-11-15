@@ -16,6 +16,8 @@ import time
 import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,8 @@ from urllib.parse import urljoin, urlsplit, urlunsplit, urlencode
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+
+MODEL_IDS = ['duo', '18 pro max', '18 pro', '17 pro max', '17 pro', '17', '17e', 'air', '16 pro max', '16 pro', '16 plus', '16', '16e', '15 pro max', '15 pro', '15 plus', '15', '14 pro max', '14 pro', '14 plus', '14', '13 pro max', '13 pro', '13 mini', '13', '12 pro max', '12 pro', '12 mini', '12', '11 pro max', '11 pro', '11', 'xs max', 'xs', 'xr', 'x', 'se 2022', 'se 2020', 'se 2016', 'se', '8 plus', '8', '7 plus', '7', '6s plus', '6s', '6 plus', '6', '5s', '5c', '5', '4s', '4', '3gs', '3g', '2g']
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
@@ -62,8 +66,12 @@ def load_config() -> dict[str, Any]:
             remote = response.json()
         except (requests.RequestException, ValueError):
             raise RuntimeError("Nie można odczytać ustawień Discorda. Pomijam przebieg zamiast używać starych filtrów.") from None
-        models = remote.get("models")
-        if not isinstance(models, list) or not models or any(type(n) is not int or n not in range(11, 16) for n in models):
+        values = remote.get("models")
+        if not isinstance(values, list) or not values:
+            raise ValueError("Brak wybranych modeli.")
+        models = list(dict.fromkeys(m for value in values for m in
+            ([m for m in MODEL_IDS if m.split()[0] == str(value)] if type(value) is int else [str(value).lower()])))
+        if not models or any(m not in MODEL_IDS for m in models):
             raise ValueError("Niepoprawne modele w ustawieniach.")
         city = remote.get("city", "")
         if not isinstance(city, str) or not re.fullmatch(r"[^\W\d_][^\d_]{1,79}", city):
@@ -81,9 +89,13 @@ def load_config() -> dict[str, Any]:
         query = {"search[dist]": radius, "search[order]": "created_at:desc", "search[filter_float_price:from]": minimum}
         if maximum is not None:
             query["search[filter_float_price:to]"] = maximum
+        families = list(dict.fromkeys(m.split()[0] for m in models))
         config["searches"] = [{"name": f"iPhone {n} · {city} +{radius} km", "source": "rss",
-            "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone-{n}/?" + urlencode(query)} for n in models]
-        config["include_title_regex"] = r"\biphone\s*(" + "|".join(map(str, models)) + r")\b"
+            "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone-{n}/?" + urlencode(query)} for n in families]
+        # Additional first-page search catches titles missed by family searches.
+        config["searches"].append({"name": f"iPhone · {city} +{radius} km", "source":"rss",
+            "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone/?" + urlencode(query)})
+        config["model_ids"] = models
         config["enabled"] = remote["enabled"]
     searches = config.get("searches", [])
     if not searches:
@@ -148,13 +160,28 @@ def normalize_phone_title(title: str) -> str:
     return re.sub(r"(?<=\d)(?=pro|max|mini|plus)", " ", title, flags=re.IGNORECASE)
 
 
-def phone_model(title: str) -> str:
-    title = normalize_phone_title(title)
-    match = re.search(r"\biphone\s*(11|12|13|14|15)\s*(pro\s*max|pro|max|plus|mini)?\b", title, flags=re.IGNORECASE)
+def detect_model(title: str) -> str | None:
+    title = normalize_phone_title(title).casefold()
+    title = re.sub(r"(?<=pro)(?=max)", " ", title)
+    match = re.search(r"\biphone\s*(.*)", title)
     if not match:
-        return "Model nieznany"
-    suffix = re.sub(r"\s+", " ", (match.group(2) or "").strip()).title()
-    return f"iPhone {match.group(1)}" + (f" {suffix}" if suffix else "")
+        return None
+    rest = match.group(1)
+    if re.match(r"se\b", rest):
+        for year, aliases in [("2022", r"2022|3[ .]*(?:gen|generacja)"), ("2020", r"2020|2[ .]*(?:gen|generacja)"), ("2016", r"2016|1[ .]*(?:gen|generacja)")]:
+            if re.search(aliases, rest):
+                return "se " + year
+        return "se"
+    for model in sorted(MODEL_IDS, key=len, reverse=True):
+        pattern = re.escape(model).replace(r"\ ", r"\s*")
+        if re.match(pattern + r"(?![a-z0-9])", rest):
+            return model
+    return None
+
+
+def phone_model(title: str) -> str:
+    model = detect_model(title)
+    return "iPhone " + model.upper().replace("PRO", "Pro").replace("MAX", "Max").replace("PLUS", "Plus").replace("MINI", "mini") if model else "Model nieznany"
 
 
 def _normalized_place(name: str) -> str:
@@ -310,8 +337,8 @@ def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
             image_url = ""
         url = canonical_url(link)
         listings.append(Listing(stable_id(url), title, url, price, location, image_url, source_name, location_name))
-    if not listings:
-        raise RuntimeError("Kanał RSS nie zawiera poprawnych ofert. Historia pozostaje bez zmian.")
+    if root.findall("./channel/item") and not listings:
+        raise RuntimeError("RSS zawiera wpisy, ale parser nie rozpoznaje ofert.")
     return listings
 
 
@@ -331,7 +358,7 @@ def fetch_search(session: requests.Session, search: dict[str, str], timeout: int
 def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     title = normalize_phone_title(listing.title).casefold()
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
-    if not re.search(include_pattern, title, flags=re.IGNORECASE):
+    if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
     exclude_words = config.get("exclude_title_words", [])
     prefix = title.split("iphone", 1)[0]
@@ -362,11 +389,36 @@ def format_plain(listing: Listing) -> str:
     return "\n".join(parts)
 
 
+def capture_timing(listing: Listing, now: datetime | None = None) -> str:
+    now = now or datetime.now(ZoneInfo("Europe/Warsaw"))
+    text = listing.location_date.casefold()
+    clock = re.search(r"(?<!\d)(\d{1,2}):(\d{2})(?::(\d{2}))?", text)
+    iso = re.search(r"(20\d{2})-(\d{2})-(\d{2})", text)
+    posted = None
+    try:
+        if clock and iso:
+            posted = datetime(*map(int, iso.groups()), *[int(x or 0) for x in clock.groups()], tzinfo=now.tzinfo)
+        elif clock and ("dzisiaj" in text or "wczoraj" in text):
+            posted = now.replace(hour=int(clock[1]), minute=int(clock[2]), second=int(clock[3] or 0), microsecond=0)
+            if "wczoraj" in text:
+                posted -= timedelta(days=1)
+    except ValueError:
+        posted = None
+    detected = f"Wykryto o {now:%H:%M:%S}"
+    if posted:
+        seconds = int((now-posted).total_seconds())
+        if seconds >= 0:
+            return f"około {seconds//60} min od daty podanej przez OLX\n{detected}"
+    return f"{detected}\nŹródło nie podaje dokładnej godziny publikacji."
+
+
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     place = listing.location_name or extract_location(listing.location_date)[0] or "Nie podano"
     distance = distance_from_wilkowice(place)
     embed: dict[str, Any] = {
-        "title": listing.title[:256],
+        "title": "📱 " + listing.title[:250],
+        "description": "**" + listing.price[:100] + "** · " + place[:150],
+        "timestamp": datetime.now(ZoneInfo("UTC")).isoformat(),
         "url": listing.url,
         "fields": [
             {"name": "Model", "value": phone_model(listing.title), "inline": True},
@@ -374,14 +426,15 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
             {"name": "Miejscowość", "value": place[:1024], "inline": True},
             {"name": "Od Wilkowic", "value": f"około {distance} km (w linii prostej)" if distance is not None else "brak danych o odległości", "inline": True},
         ],
-        "color": 5793266,
+        "color": 0x2ECC71,
         "footer": {"text": f"iPhone Sniper • {listing.source}"},
     }
     posted = extract_location(listing.location_date)[1]
     if posted:
         embed["fields"].append({"name": "Wystawiono", "value": posted[:1024], "inline": True})
+    embed["fields"].append({"name": "⚡ Przechwycenie", "value": capture_timing(listing), "inline": False})
     if listing.image_url:
-        embed["thumbnail"] = {"url": listing.image_url}
+        embed["image"] = {"url": listing.image_url}
     response = requests.post(webhook_url, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
     response.raise_for_status()
 
@@ -451,10 +504,10 @@ def run_once() -> int:
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "pl-PL,pl;q=0.9,en;q=0.5",
             })
-            return fetch_search(session, search, int(config.get("request_timeout_seconds", 20)))
+            return fetch_search(session, search, min(20, int(config.get("request_timeout_seconds", 20))))
 
     results: dict[int, list[Listing] | Exception] = {}
-    with ThreadPoolExecutor(max_workers=min(3, len(config["searches"]))) as executor:
+    with ThreadPoolExecutor(max_workers=min(5, len(config["searches"]))) as executor:
         futures = {executor.submit(fetch_one, search): index for index, search in enumerate(config["searches"])}
         for future in as_completed(futures):
             index = futures[future]
