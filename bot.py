@@ -132,7 +132,9 @@ def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     ids = list(dict.fromkeys(state.get("seen_ids", [])))[-max_seen:]
     payload = {"initialized": bool(state.get("initialized", False)), "seen_ids": ids,
-               "initialized_searches": state.get("initialized_searches", []), "id_format_version": 2}
+               "initialized_searches": state.get("initialized_searches", []),
+               "bootstrap_searches": state.get("bootstrap_searches", []),
+               "notified_ids": state.get("notified_ids", [])[-max_seen:], "id_format_version": 2}
     tmp = STATE_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -587,6 +589,11 @@ def _scan_once(report: dict[str, Any]) -> int:
     if state.get("id_format_version") != 2:
         LOG.info("Aktualizacja identyfikatorów: ustalam nową historię bez alertów o starych ofertach.")
         state = {"initialized": False, "seen_ids": [], "initialized_searches": [], "id_format_version": 2}
+    # Only the installation's original searches may establish a silent baseline.
+    # Editing city/price/models must never silently consume new listings again.
+    if "bootstrap_searches" not in state:
+        state["bootstrap_searches"] = [] if state.get("initialized") else [search["url"] for search in config["searches"]]
+    bootstrap_searches = set(state["bootstrap_searches"])
     ordered_seen = list(dict.fromkeys(str(x) for x in state.get("seen_ids", [])))
     seen = set(ordered_seen)
     initialized_searches = set(state.get("initialized_searches", []))
@@ -623,7 +630,8 @@ def _scan_once(report: dict[str, Any]) -> int:
                 raise result
             listings = result
             report["fetched"] += len(listings)
-            bootstrap = search["url"] not in initialized_searches and config.get("bootstrap_without_alerts", True)
+            bootstrap = search["url"] in bootstrap_searches and config.get("bootstrap_without_alerts", True)
+            bootstrap_searches.discard(search["url"])
             initialized_searches.add(search["url"])
             successful_searches += 1
             report["searches_ok"] = successful_searches
@@ -671,6 +679,8 @@ def _scan_once(report: dict[str, Any]) -> int:
             if listing_id not in state_seen:
                 state_seen.add(listing_id)
                 ordered_seen.append(listing_id)
+    state["bootstrap_searches"] = sorted(bootstrap_searches)
+    state["notified_ids"] = list(dict.fromkeys(state.get("notified_ids", []) + [x.listing_id for x in found if x.listing_id in successfully_notified]))
     state["initialized"] = True
     state["seen_ids"] = ordered_seen
     state["initialized_searches"] = sorted(initialized_searches)
