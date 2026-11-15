@@ -98,6 +98,8 @@ def load_config() -> dict[str, Any]:
         config["model_ids"] = models
         config["price_min"] = minimum
         config["price_max"] = maximum
+        config["area_city"] = city
+        config["area_radius"] = radius
         config["enabled"] = remote["enabled"]
     searches = config.get("searches", [])
     if not searches:
@@ -228,6 +230,21 @@ def distance_from_wilkowice(location_name: str) -> int | None:
         a = math.sin(dphi / 2) ** 2 + math.cos(origin_phi) * math.cos(phi) * math.sin(dlambda / 2) ** 2
         distances.append(2 * 6371 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
     return round(min(distances))
+
+
+def distance_from_city(location: str, city: str) -> float | None:
+    try:
+        _, places = _place_index()
+        centers = places.get(_normalized_place(city), [])
+        destinations = places.get(_normalized_place(location), [])
+        if len(centers) != 1 or len(destinations) != 1:
+            return None  # Unknown or ambiguous place: retain the source's location filter.
+        lat, lon = map(math.radians, centers[0])
+        lat2, lon2 = map(math.radians, destinations[0])
+        a = math.sin((lat2-lat)/2)**2 + math.cos(lat)*math.cos(lat2)*math.sin((lon2-lon)/2)**2
+        return 6371 * 2 * math.atan2(math.sqrt(a), math.sqrt(max(0,1-a)))
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def canonical_url(href: str) -> str:
@@ -365,6 +382,14 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
+    city, radius = config.get("area_city"), config.get("area_radius")
+    if city and radius is not None:
+        place = listing.location_name or extract_location(listing.location_date)[0]
+        if radius == 0 and place and _normalized_place(place) != _normalized_place(city):
+            return False
+        distance = distance_from_city(place, city)
+        if distance is not None and distance > radius:
+            return False
     minimum, maximum = config.get("price_min", 0), config.get("price_max")
     if minimum or maximum is not None:
         price = re.search(r"(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:zł|pln)", listing.price, flags=re.IGNORECASE)
