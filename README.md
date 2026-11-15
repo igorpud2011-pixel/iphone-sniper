@@ -85,7 +85,7 @@ Ustaw zmienne środowiskowe `DISCORD_WEBHOOK_URL` lub `TELEGRAM_BOT_TOKEN` i `TE
 python bot.py --loop
 ```
 
-Domyślnie sprawdza źródło RSS co 60 sekund. Dockerfile uruchamia ten tryb automatycznie. Na serwerze/VPS ustaw sekrety `DISCORD_WEBHOOK_URL` (i opcjonalnie `SETTINGS_URL` oraz `SETTINGS_KEY`) jako zmienne środowiskowe kontenera. Katalog `data/` musi być trwały, bo zawiera pamięć wysłanych ofert i bazę odległości. Po uruchomieniu i potwierdzeniu alertu wyłącz harmonogram `schedule` GitHub Actions, aby nie działały dwa niezależne skanery i nie wysyłały duplikatów. Baza miejscowości pochodzi z [GeoNames](https://www.geonames.org/) i jest udostępniana na licencji CC BY 4.0.
+Domyślnie sprawdza źródło RSS co 60 sekund. Dockerfile uruchamia ten tryb automatycznie. W repozytorium jest też `docker-compose.yml`, który zachowuje pamięć ogłoszeń i uruchamia bota ponownie po restarcie maszyny. Skopiuj `.env.example` do `.env`, wpisz webhook Discorda w `DISCORD_WEBHOOK_URL`, a opcjonalnie ustaw `SETTINGS_URL` i `SETTINGS_KEY`. Uruchom `docker compose up -d --build`; logi podejrzysz przez `docker compose logs -f`. Nie wysyłaj ani nie commituj pliku `.env`. Po uruchomieniu i potwierdzeniu alertu wyłącz harmonogram `schedule` GitHub Actions, aby nie działały dwa niezależne skanery i nie wysyłały duplikatów. Baza miejscowości pochodzi z [GeoNames](https://www.geonames.org/) i jest udostępniana na licencji CC BY 4.0.
 
 Skan co minutę skraca opóźnienie samego monitora do około 0–60 sekund plus czas pobrania danych i wysłania alertu. Nie przyspieszy publikacji po stronie OLX ani odświeżenia zewnętrznego RSS; jeśli RSS pokaże ofertę późno, alert też przyjdzie późno. Monitor nie widzi ofert, których publiczne wyniki i RSS jeszcze nie udostępniają.
 
