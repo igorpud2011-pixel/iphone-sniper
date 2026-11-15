@@ -508,10 +508,13 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     if posted:
         embed["fields"].append({"name": "Wystawiono", "value": posted[:1024], "inline": True})
     embed["fields"].append({"name": "⏱️ Wykrycie i odczyt", "value": capture_timing(listing), "inline": False})
-    embed["fields"].append({"name": "💰 Sprzedaż i zysk z Twojej tabeli", "value": resale_estimate(listing), "inline": False})
     if listing.image_url:
         embed["image"] = {"url": listing.image_url}
-    response = requests.post(webhook_url, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
+    estimate = resale_estimate(listing)
+    estimate = estimate.replace("Twoja cena sprzedaży:", "## 💰 Twoja cena sprzedaży:").replace("Zysk przed kosztami:", "## 📈 Zysk przed kosztami:")
+    heading = "TEST WIADOMOŚCI" if listing.listing_id in {"test", "pricing-test"} else "NOWA OFERTA"
+    content = f"# 📱 {heading} · {phone_model(listing.title)}\n## 🏷️ Cena zakupu: **{listing.price[:100]}**\n{estimate}"
+    response = requests.post(webhook_url, json={"content": content[:2000], "embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
     response.raise_for_status()
 
 
