@@ -54,3 +54,11 @@ class ReleaseReliabilityTests(unittest.TestCase):
                 bot.send_discord('https://example.com/webhook',bot.Listing('x','iPhone 13','https://www.olx.pl/',price='500 zł'),20)
                 self.assertIn('Cennik niedostępny',post.call_args.kwargs['json']['embeds'][0]['description'])
         bot.resale_table.cache_clear()
+
+    def test_compact_phone_title_preserves_exact_storage_valuation(self):
+        table={'date':'test','rows':[{'model':'13','storage_gb':128,'sale_price':500,'suspect':False},{'model':'13','storage_gb':256,'sale_price':700,'suspect':False}]}
+        with patch.object(bot,'resale_table',return_value=table):
+            result=bot.resale_estimate(bot.Listing('x','iPhone13128GB','',price='200 zł'))
+        self.assertIn('**500 zł**',result)
+        self.assertIn('**300 zł**',result)
+        self.assertNotIn('Nieznana pamięć',result)
