@@ -633,62 +633,52 @@ def _scan_once(report: dict[str, Any]) -> int:
             })
             return fetch_search(session, search, min(20, int(config.get("request_timeout_seconds", 20))))
 
-    results: dict[int, list[Listing] | Exception] = {}
-    with ThreadPoolExecutor(max_workers=min(6, len(config["searches"]))) as executor:
+    successfully_notified: set[str] = set()
+    # Consume each completed source immediately. A slow supplementary feed must
+    # not hold back notifications already available from a healthy source.
+    with ThreadPoolExecutor(max_workers=min(8, len(config["searches"]))) as executor:
         futures = {executor.submit(fetch_one, search): index for index, search in enumerate(config["searches"])}
         for future in as_completed(futures):
             index = futures[future]
+            search = config["searches"][index]
             try:
-                results[index] = future.result()
+                listings = future.result()
+                report["fetched"] += len(listings)
+                bootstrap = search["url"] in initial_bootstrap and config.get("bootstrap_without_alerts", True)
+                bootstrap_searches.discard(search["url"])
+                initialized_searches.add(search["url"])
+                successful_searches += 1
+                report["searches_ok"] = successful_searches
+                LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
+                LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtr tytułu.",
+                         sum(x.listing_id in seen for x in listings),
+                         sum(not is_flip_candidate(x, config) for x in listings))
+                for listing in listings:
+                    if listing.listing_id in seen:
+                        continue
+                    fresh_ids.append(listing.listing_id)
+                    if bootstrap:
+                        seen.add(listing.listing_id)
+                    elif is_flip_candidate(listing, config):
+                        seen.add(listing.listing_id)
+                        rejected.discard(listing.listing_id)
+                        found.append(listing)
+                        # Deliver while slower providers are still being fetched.
+                        try:
+                            if send_alert(listing, int(config.get("request_timeout_seconds", 20))):
+                                successfully_notified.add(listing.listing_id)
+                                LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
+                        except Exception as exc:
+                            LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
+                    else:
+                        rejected.add(listing.listing_id)
             except Exception as exc:
-                results[index] = exc
-
-    # Process in config order so persistent state stays predictable despite concurrent fetches.
-    for index, search in enumerate(config["searches"]):
-        try:
-            result = results.get(index, RuntimeError("Brak wyniku wyszukiwania."))
-            if isinstance(result, Exception):
-                raise result
-            listings = result
-            report["fetched"] += len(listings)
-            bootstrap = search["url"] in initial_bootstrap and config.get("bootstrap_without_alerts", True)
-            bootstrap_searches.discard(search["url"])
-            initialized_searches.add(search["url"])
-            successful_searches += 1
-            report["searches_ok"] = successful_searches
-            LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
-            LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtr tytułu.",
-                     sum(x.listing_id in seen for x in listings),
-                     sum(not is_flip_candidate(x, config) for x in listings))
-            for listing in listings:
-                if listing.listing_id in seen:
-                    continue
-                seen.add(listing.listing_id)
-                fresh_ids.append(listing.listing_id)
-                if bootstrap:
-                    pass
-                elif is_flip_candidate(listing, config):
-                    rejected.discard(listing.listing_id)
-                    found.append(listing)
-                else:
-                    rejected.add(listing.listing_id)
-        except Exception as exc:
-            report["errors"].append(f"Wyszukiwanie {index+1}: {type(exc).__name__}")
-            LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
+                report["errors"].append(f"Wyszukiwanie {index+1}: {type(exc).__name__}")
+                LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
 
     if successful_searches == 0:
         LOG.error("Żadne wyszukiwanie nie zadziałało. Stan pozostaje bez zmian.")
         return 2
-
-    # Do not advance the saved state for a listing if every configured notifier failed.
-    successfully_notified: set[str] = set()
-    for listing in found:
-        try:
-            if send_alert(listing, int(config.get("request_timeout_seconds", 20))):
-                successfully_notified.add(listing.listing_id)
-                LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
-        except Exception as exc:
-            LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
 
     # Non-matching results can be marked seen immediately. Matching items are stored only after
     # at least one channel confirms the send, so temporary notification errors can be retried.
