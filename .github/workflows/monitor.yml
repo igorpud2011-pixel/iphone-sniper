@@ -54,6 +54,7 @@ jobs:
         id: scan
         continue-on-error: true
         env:
+          RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
           SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
           SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
           TEST_DISCORD: ${{ inputs.test_discord }}
