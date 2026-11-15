@@ -29,3 +29,15 @@ class ModelTimingTests(unittest.TestCase):
         self.assertEqual(cfg['model_ids'],remote['models'])
         self.assertFalse(bot.is_flip_candidate(bot.Listing('id','iPhone 13 128 GB',''),cfg))
         self.assertTrue(bot.is_flip_candidate(bot.Listing('id','iPhone13Pro 128GB',''),cfg))
+
+    def test_se_short_names_and_local_price(self):
+        self.assertEqual(bot.detect_model('iPhone SE2 64 GB'), 'se 2020')
+        self.assertEqual(bot.detect_model('iPhone SE3 128 GB'), 'se 2022')
+        cfg={'model_ids':['13'],'price_min':100,'price_max':900}
+        for price, expected in [('1 200 zł',False),('899,99 zł do negocjacji',True),('50 zł',False),('Cena niepodana',False)]:
+            self.assertEqual(bot.is_flip_candidate(bot.Listing('id','iPhone 13','',price=price),cfg),expected)
+
+    def test_promoted_outside_radius_is_rejected(self):
+        cfg={'model_ids':['13'],'area_city':'Bielsko-Biała','area_radius':30}
+        self.assertFalse(bot.is_flip_candidate(bot.Listing('1','iPhone 13','',location_name='Żory'),cfg))
+        self.assertTrue(bot.is_flip_candidate(bot.Listing('2','iPhone 13','',location_name='Bielsko-Biała'),cfg))
