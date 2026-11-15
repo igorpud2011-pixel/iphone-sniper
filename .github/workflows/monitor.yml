@@ -29,7 +29,7 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 330
     steps:
       - name: Pobierz kod
         uses: actions/checkout@v7
@@ -64,7 +64,28 @@ jobs:
           if [ "$TEST_DISCORD" = "true" ]; then
             python bot.py --test-discord
           else
-            python bot.py
+            # One runner performs repeated checks; delayed cron starts no longer
+            # determine the interval between scans during an active session.
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            deadline=$((SECONDS + 18000))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              started=$SECONDS
+              python bot.py || echo "::warning::Niepełny skan; ponowię za minutę"
+              git add data/seen.json
+              if ! git diff --cached --quiet; then
+                git commit -m "Aktualizacja zapisanych ofert"
+                git pull --rebase origin main
+                git push
+              fi
+              # Stop on source changes so the next queued run loads the fixes.
+              git fetch origin main --quiet
+              if ! git diff --quiet HEAD origin/main -- . ':!data/seen.json'; then
+                break
+              fi
+              delay=$((60 - (SECONDS - started)))
+              if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
+            done
           fi
 
       - name: Zapisz wykryte ogłoszenia
