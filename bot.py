@@ -319,7 +319,7 @@ def run_once() -> int:
             bootstrap = search["url"] not in initialized_searches and config.get("bootstrap_without_alerts", True)
             initialized_searches.add(search["url"])
             successful_searches += 1
-            LOG.info("%s: odczytano %d ofert.", search.get("name", "OLX"), len(listings))
+            LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
             for listing in listings:
                 if listing.listing_id in seen:
                     continue

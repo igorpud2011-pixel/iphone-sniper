@@ -1,22 +1,32 @@
 {
   "searches": [
     {
-      "name": "iPhone 11",
-      "url": "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc",
+      "name": "iPhone 11 · Bielsko-Biała +30 km",
+      "url": "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-11/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
       "source": "rss"
     },
     {
-      "name": "iPhone 12",
-      "url": "https://www.olx.pl/elektronika/telefony/q-iphone-12/?search%5Border%5D=created_at%3Adesc",
+      "name": "iPhone 12 · Bielsko-Biała +30 km",
+      "url": "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-12/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
       "source": "rss"
     },
     {
-      "name": "iPhone 13",
-      "url": "https://www.olx.pl/elektronika/telefony/q-iphone-13/?search%5Border%5D=created_at%3Adesc",
+      "name": "iPhone 13 · Bielsko-Biała +30 km",
+      "url": "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-13/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
+      "source": "rss"
+    },
+    {
+      "name": "iPhone 14 · Bielsko-Biała +30 km",
+      "url": "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-14/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
+      "source": "rss"
+    },
+    {
+      "name": "iPhone 15 · Bielsko-Biała +30 km",
+      "url": "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-15/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
       "source": "rss"
     }
   ],
-  "include_title_regex": "\\biphone\\s*(11|12|13)\\b",
+  "include_title_regex": "\\biphone\\s*(11|12|13|14|15)\\b",
   "exclude_title_words": [
     "etui",
     "case",
