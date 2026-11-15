@@ -111,6 +111,15 @@ def load_config() -> dict[str, Any]:
         host = urlsplit(url).hostname or ""
         if host not in {OLX_HOST, "olx.pl"}:
             raise ValueError(f"Dozwolone są tylko adresy OLX.pl. Nieprawidłowy adres: {url}")
+    # One broad independent feed supplements the existing family feeds.
+    # Keep a single request per scan: RSS-Bridge may crawl detail pages on cache miss.
+    primary = [search for search in searches if search.get("source") == "rss"]
+    if primary and config.get("supplementary_rss_bridge", True):
+        broad = next((search for search in primary if "/q-iphone/?" in search["url"]), None)
+        if broad is None:
+            broad = dict(primary[0])
+            broad["url"] = re.sub(r"/q-iphone-[^/]+/", "/q-iphone/", broad["url"])
+        config["searches"].append({**broad, "name": "OLX · RSS-Bridge (uzupełniający)", "source": "rss_bridge"})
     return config
 
 
@@ -354,12 +363,15 @@ def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
         if not title:
             continue
         detail = BeautifulSoup(item.findtext("description") or "", "html.parser")
-        price = _text(detail.select_one("h1"))
+        price = _text(detail.select_one("h1")) or _text(detail.select_one("p:nth-of-type(2) > span"))
         price = re.sub(r"^Cena:\s*", "", price) or "Cena niepodana"
         location = _text(detail.select_one("p"))
         location_name, _ = extract_location(location)
         image = detail.select_one("img")
         image_url = image.get("src", "") if image else ""
+        media = item.find("{http://search.yahoo.com/mrss/}content")
+        if media is not None:
+            image_url = media.get("url", "").split("#", 1)[0]
         if urlsplit(image_url).scheme != "https":
             image_url = ""
         url = canonical_url(link)
@@ -379,8 +391,14 @@ def stamp_listings(listings: list[Listing], started: float) -> list[Listing]:
 def fetch_search(session: requests.Session, search: dict[str, str], timeout: int) -> list[Listing]:
     started = time.monotonic()
     url = search["url"]
-    if search.get("source") == "rss":
-        response = session.get("https://tedeelock.com/src/get.php", params={"url": url}, timeout=timeout)
+    if search.get("source") in {"rss", "rss_bridge"}:
+        if search.get("source") == "rss_bridge":
+            endpoint = "https://rssbridge.sciunto.org/"
+            params = {"action": "display", "bridge": "OLX", "url": url,
+                      "includePostsWithoutPricetag": "on", "includeFeaturedPosts": "on", "format": "Mrss"}
+        else:
+            endpoint, params = "https://tedeelock.com/src/get.php", {"url": url}
+        response = session.get(endpoint, params=params, timeout=timeout)
         response.raise_for_status()
         listings = parse_rss(response.text, search.get("name", "OLX") + " · RSS")
         return stamp_listings(listings, started)
@@ -595,6 +613,7 @@ def _scan_once(report: dict[str, Any]) -> int:
     if "bootstrap_searches" not in state:
         state["bootstrap_searches"] = [] if state.get("initialized") else [search["url"] for search in config["searches"]]
     bootstrap_searches = set(state["bootstrap_searches"])
+    initial_bootstrap = frozenset(bootstrap_searches)
     ordered_seen = list(dict.fromkeys(str(x) for x in state.get("seen_ids", [])))
     rejected = set(state.get("rejected_ids", []))
     seen = set(ordered_seen) - rejected
@@ -632,7 +651,7 @@ def _scan_once(report: dict[str, Any]) -> int:
                 raise result
             listings = result
             report["fetched"] += len(listings)
-            bootstrap = search["url"] in bootstrap_searches and config.get("bootstrap_without_alerts", True)
+            bootstrap = search["url"] in initial_bootstrap and config.get("bootstrap_without_alerts", True)
             bootstrap_searches.discard(search["url"])
             initialized_searches.add(search["url"])
             successful_searches += 1

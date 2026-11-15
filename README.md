@@ -95,3 +95,9 @@ W bieżącym trybie GitHub Actions odstęp wynosi 5 minut; w trybie ciągłym ok
 - OLX może zmieniać układ strony, ograniczać częstotliwość zapytań albo zwrócić błąd 403/429. Bot nie obchodzi zabezpieczeń; zapisuje błąd i próbuje przy następnym przebiegu.
 - Nie gwarantuje alertu w sekundę po publikacji. Przy GitHub Actions typowy interwał to 5 minut plus ewentualne opóźnienie harmonogramu.
 - Bot tylko wysyła linki. Nie loguje się na OLX, nie pisze do sprzedawców i niczego nie kupuje.
+
+## Dwa dostawcy RSS OLX
+
+Obecny generator tedeelock pozostaje głównym źródłem (zapytania rodzin modeli oraz ogólne). Dodatkowo bot odczytuje jeden ogólny kanał z RSS-Bridge na rssbridge.sciunto.org, z tymi samymi filtrami miasta, promienia i ceny. RSS-Bridge ma własny parser i pamięć podręczną. Jest źródłem uzupełniającym, nie gwarantuje świeżości do 5 minut. Nie używamy blokowanej instancji bridge01.
+
+Odczyty działają równolegle z limitem czasu. Błąd jednego dostawcy daje status częściowy, lecz nie zatrzymuje alertów z pozostałych kanałów. Wspólne ID OLX i historia wysłanych alertów zapobiegają ponownemu wysłaniu tej samej oferty. Ceny, zdjęcia i miejscowości są odczytywane z obu formatów RSS. Ustawienia Discorda nadal filtrują wszystkie wyniki. Aby wyłączyć kanał dodatkowy, ustaw `"supplementary_rss_bridge": false` w config.json.
