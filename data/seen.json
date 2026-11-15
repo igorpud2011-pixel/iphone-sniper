@@ -315,7 +315,17 @@
     "ID1DH1IK",
     "ID17WWM2",
     "ID1DH2FZ",
-    "ID1DH2YI"
+    "ID1DH2YI",
+    "ID1DH45Q",
+    "ID1C85FB",
+    "ID1DH1WL",
+    "ID1BSWCT",
+    "ID1BSWH5",
+    "ID1DA3Y4",
+    "IDJIUJP",
+    "ID19KEC5",
+    "ID18KVDD",
+    "ID1DGQKX"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-11/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
@@ -328,6 +338,7 @@
     "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-14/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0",
     "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-15/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
     "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-15/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0",
+    "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0",
     "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc",
     "https://www.olx.pl/elektronika/telefony/q-iphone-12/?search%5Border%5D=created_at%3Adesc",
     "https://www.olx.pl/elektronika/telefony/q-iphone-13/?search%5Border%5D=created_at%3Adesc"
