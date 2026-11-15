@@ -14,9 +14,9 @@ class ModelTimingTests(unittest.TestCase):
     def test_timing_does_not_invent_unknown_publication(self):
         now=datetime(2026,11,15,14,0,tzinfo=ZoneInfo('Europe/Warsaw'))
         ad=bot.Listing('a','iPhone 13','',location_date='Miejscowość: Bielsko-Biała, Wystawiono: Dzisiaj o 13:57')
-        self.assertIn('3 min',bot.capture_timing(ad,now))
+        self.assertIn('<t:',bot.capture_timing(ad,now))
         ad.location_date='Wystawiono: Dzisiaj'
-        self.assertIn('nie podaje',bot.capture_timing(ad,now))
+        self.assertIn('brak wiarygodnego pomiaru',bot.capture_timing(ad,now))
     def test_no_tracking_loss_on_empty_rss(self):
         self.assertEqual(bot.parse_rss('<rss><channel/></rss>'),[])
 
@@ -51,3 +51,10 @@ class ModelTimingTests(unittest.TestCase):
         with patch.object(bot,'publish_status') as publish, patch.object(bot,'load_config',return_value={'enabled':False}):
             self.assertEqual(bot.run_once(),0)
             self.assertEqual(publish.call_args.args[0]['status'],'paused')
+
+    def test_real_fetch_time_not_source_age(self):
+        ad=bot.Listing('1','iPhone 11','',detected_at=1794751200,fetch_seconds=2.51)
+        result=bot.capture_timing(ad)
+        self.assertIn('2.51 s',result)
+        self.assertIn('<t:1794751200:R>',result)
+        self.assertNotIn('72 min',result)
