@@ -380,5 +380,6 @@
   "notified_ids": [
     "ID1DHLUG"
   ],
+  "rejected_ids": [],
   "id_format_version": 2
 }
