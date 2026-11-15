@@ -72,7 +72,7 @@ def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     ids = list(dict.fromkeys(state.get("seen_ids", [])))[-max_seen:]
     payload = {"initialized": bool(state.get("initialized", False)), "seen_ids": ids,
-               "initialized_searches": state.get("initialized_searches", [])}
+               "initialized_searches": state.get("initialized_searches", []), "id_format_version": 2}
     tmp = STATE_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -100,7 +100,7 @@ def canonical_url(href: str) -> str:
 
 
 def stable_id(url: str) -> str:
-    match = re.search(r"(ID[A-Z0-9]+)", url, flags=re.IGNORECASE)
+    match = re.search(r"-(ID[A-Z0-9]+)(?:\.html)?/?$", urlsplit(url).path, flags=re.IGNORECASE)
     if match:
         return match.group(1).upper()
     return hashlib.sha256(url.encode("utf-8")).hexdigest()[:20]
@@ -295,6 +295,9 @@ def send_alert(listing: Listing, timeout: int) -> bool:
 def run_once() -> int:
     config = load_config()
     state = load_state()
+    if state.get("id_format_version") != 2:
+        LOG.info("Aktualizacja identyfikatorów: ustalam nową historię bez alertów o starych ofertach.")
+        state = {"initialized": False, "seen_ids": [], "initialized_searches": [], "id_format_version": 2}
     ordered_seen = list(dict.fromkeys(str(x) for x in state.get("seen_ids", [])))
     seen = set(ordered_seen)
     initialized_searches = set(state.get("initialized_searches", []))
