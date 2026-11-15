@@ -10,8 +10,14 @@ on:
       - discord-control.mjs
       - discord-control.test.mjs
       - .github/workflows/monitor.yml
+  repository_dispatch:
+    types: [monitor-restart]
   workflow_dispatch:
     inputs:
+      session_minutes:
+        description: Czas sesji (1–300 min); potem automatyczny restart
+        type: number
+        default: 300
       test_discord:
         description: 'Wyślij tylko test Discorda (bez skanowania OLX)'
         type: boolean
@@ -57,6 +63,7 @@ jobs:
           RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
           SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
           SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
+          SESSION_MINUTES: ${{ inputs.session_minutes || 300 }}
           TEST_DISCORD: ${{ inputs.test_discord }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -69,7 +76,9 @@ jobs:
             # determine the interval between scans during an active session.
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            deadline=$((SECONDS + 18000))
+            minutes="$SESSION_MINUTES"
+            if ! [[ "$minutes" =~ ^[0-9]+$ ]] || [ "$minutes" -lt 1 ] || [ "$minutes" -gt 300 ]; then minutes=300; fi
+            deadline=$((SECONDS + minutes * 60))
             while [ "$SECONDS" -lt "$deadline" ]; do
               started=$SECONDS
               python bot.py || echo "::warning::Niepełny skan; ponowię za minutę"
@@ -110,3 +119,23 @@ jobs:
             exit 1
           fi
           echo '### Sprawdzenie zakończone poprawnie' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Uruchom następną sesję bez oczekiwania na cron
+        if: ${{ always() && !cancelled() && steps.scan.outcome != 'skipped' && inputs.test_discord != true }}
+        env:
+          SESSION_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PYCODE'
+          import json,os,time,urllib.request,urllib.error
+          url=os.environ['GITHUB_API_URL']+'/repos/'+os.environ['GITHUB_REPOSITORY']+'/dispatches'
+          body=json.dumps({'event_type':'monitor-restart'}).encode()
+          for attempt in range(3):
+              request=urllib.request.Request(url,data=body,method='POST',headers={'Authorization':'Bearer '+os.environ['SESSION_GITHUB_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'})
+              try:
+                  with urllib.request.urlopen(request,timeout=15) as response:
+                      assert response.status==204
+                  print('GitHub przyjął uruchomienie kolejnej sesji.');break
+              except (urllib.error.URLError,TimeoutError):
+                  if attempt==2:raise RuntimeError('Restart nie został potwierdzony; pozostaje harmonogram awaryjny.') from None
+                  time.sleep(3)
+          PYCODE
