@@ -143,7 +143,13 @@ def extract_location(value: str) -> tuple[str, str]:
     return (value.split(" - ", 1)[0].strip(), "") if value else ("", "")
 
 
+def normalize_phone_title(title: str) -> str:
+    title = re.sub(r"\biphone[\s-]*", "iphone ", title, flags=re.IGNORECASE)
+    return re.sub(r"(?<=\d)(?=pro|max|mini|plus)", " ", title, flags=re.IGNORECASE)
+
+
 def phone_model(title: str) -> str:
+    title = normalize_phone_title(title)
     match = re.search(r"\biphone\s*(11|12|13|14|15)\s*(pro\s*max|pro|max|plus|mini)?\b", title, flags=re.IGNORECASE)
     if not match:
         return "Model nieznany"
@@ -323,16 +329,17 @@ def fetch_search(session: requests.Session, search: dict[str, str], timeout: int
 
 
 def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
-    title = listing.title.casefold()
+    title = normalize_phone_title(listing.title).casefold()
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if not re.search(include_pattern, title, flags=re.IGNORECASE):
         return False
     exclude_words = config.get("exclude_title_words", [])
+    prefix = title.split("iphone", 1)[0]
     # Accessories at the start are standalone products. A phone bundled with
     # an etui/cable remains a valid phone listing.
     intent_words = {'kupię', 'kupie', 'zamienię', 'zamienie', 'na części', 'na czesci', 'sama bateria'}
     if any((str(word).casefold() in title if str(word).casefold() in intent_words else
-            re.match(r"^\s*" + re.escape(str(word)) + r"\b", title, flags=re.IGNORECASE))
+            re.search(r"\b" + re.escape(str(word)) + r"\b", prefix, flags=re.IGNORECASE))
            for word in exclude_words):
         return False
     return True
@@ -467,6 +474,9 @@ def run_once() -> int:
             initialized_searches.add(search["url"])
             successful_searches += 1
             LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
+            LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtr tytułu.",
+                     sum(x.listing_id in seen for x in listings),
+                     sum(not is_flip_candidate(x, config) for x in listings))
             for listing in listings:
                 if listing.listing_id in seen:
                     continue

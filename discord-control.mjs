@@ -7,6 +7,8 @@ export const modelPanel = current => ({
  components:[
   {type:1,components:[11,12,13,14,15].map(n=>({type:2,custom_id:`settings_model_${n}`,label:`${current.models.includes(n)?'✓ ':''}iPhone ${n}`,style:current.models.includes(n)?1:2}))},
   {type:1,components:[
+   {type:2,custom_id:'settings_location',label:'Miasto i promień',style:2},
+   {type:2,custom_id:'settings_price',label:'Zakres cen',style:2},
    {type:2,custom_id:'settings_models_all',label:'Wszystkie modele',style:2,disabled:current.models.length===5},
    {type:2,custom_id:'settings_monitor',label:current.enabled?'Wstrzymaj monitoring':'Włącz monitoring',style:current.enabled?2:3}
   ]}
@@ -57,10 +59,17 @@ export default {async fetch(request,env,ctx){
  if(!await verify(request,body,env.DISCORD_PUBLIC_KEY))return json({error:'Invalid signature'},401);
  let interaction;try{interaction=JSON.parse(body);}catch{return json({error:'Invalid JSON'},400);}
  if(interaction.type===1)return json({type:1});
- if(interaction.type!==2&&interaction.type!==3)return json({error:'Unsupported interaction'},400);
+ if(![2,3,5].includes(interaction.type))return json({error:'Unsupported interaction'},400);
  const user=interaction.member?.user?.id||interaction.user?.id;
  if(!env.OWNER_ID||user!==env.OWNER_ID)return reply('Tylko właściciel może sterować tym botem.');
  if(interaction.type===3){
+  const id=interaction.data?.custom_id;
+  if(id==='settings_location'||id==='settings_price'){
+   const location=id==='settings_location';
+   const fields=location?[['miasto','Miasto (np. Bielsko-Biała)'],['promien','Promień: 0, 2, 5, 10, 15, 30, 50, 75, 100, 150, 200']]:[['minimum','Cena minimalna w zł (np. 0)'],['maksimum','Cena maksymalna w zł (puste = bez limitu)']];
+   return json({type:9,data:{custom_id:location?'settings_location_submit':'settings_price_submit',title:location?'Lokalizacja wyszukiwania':'Zakres cen',components:fields.map(([custom_id,label])=>({type:1,components:[{type:4,custom_id,label:label.slice(0,45),style:1,required:custom_id!=='maksimum',max_length:80}]}))}});
+  }
+  ctx.waitUntil((async()=>{
   const action=interaction.data?.custom_id||'';
   const current=await env.SETTINGS.get('settings','json')||defaults();
   let next;
@@ -68,16 +77,24 @@ export default {async fetch(request,env,ctx){
   if(match){
    const model=Number(match[1]);
    const models=current.models.includes(model)?current.models.filter(n=>n!==model):[...current.models,model].sort((a,b)=>a-b);
-   if(!models.length)return reply('Wybierz przynajmniej jeden model iPhone.');
+   if(!models.length)return;
    next={...current,models};
   }else if(action==='settings_models_all')next={...current,models:[11,12,13,14,15]};
   else if(action==='settings_monitor')next={...current,enabled:!current.enabled};
-  else return json({type:6});
+  else return;
   await env.SETTINGS.put('settings',JSON.stringify(next));
-  return json({type:7,data:modelPanel(next)});
+  await fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(modelPanel(next))});
+  })().catch(()=>console.error('Nie udało się zapisać ustawień.')));
+  return json({type:6});
  }
- const name=interaction.data?.name;
+ const name=interaction.type===5?(interaction.data.custom_id==='settings_location_submit'?'lokalizacja':interaction.data.custom_id==='settings_price_submit'?'cena':'nieznana'):interaction.data?.name;
  const options=Object.fromEntries((interaction.data?.options||[]).map(o=>[o.name,o.value]));
+ if(interaction.type===5){
+  for(const row of interaction.data.components||[])for(const field of row.components||[]){
+   if(field.custom_id==='miasto')options.miasto=field.value;
+   else if(field.value.trim())options[field.custom_id]=Number(field.value);
+  }
+ }
  // Acknowledge within Discord's three-second window; storage happens afterwards.
  ctx.waitUntil((async()=>{
   let message;
@@ -92,7 +109,9 @@ export default {async fetch(request,env,ctx){
    else{
     const next=change(current,name,options);
     await env.SETTINGS.put('settings',JSON.stringify(next));
-    message='Zapisano ustawienia. Monitor zastosuje je przy następnym uruchomieniu. Po zmianie wyszukiwania pierwsze skanowanie ustala historię bez wysyłania starych ofert.';
+    const result=await fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(modelPanel(next))});
+    if(!result.ok)console.error('Discord response failed',result.status);
+    return;
    }
   }catch(e){message=e.message||'Nie udało się zapisać ustawień.';}
   const endpoint=`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`;
