@@ -48,3 +48,45 @@ class MultipleSourcesTests(unittest.TestCase):
             self.assertEqual(bot.run_once(),0)
             send.assert_not_called()
             self.assertEqual(set(bot.load_state()['seen_ids']),{'A','B'})
+
+    def test_alert_is_sent_before_slow_source_finishes(self):
+        from threading import Event
+        delivered=Event()
+        slow_observed=[]
+        ad=bot.parse_rss(FEED)[0]
+        cfg={'searches':[{'url':'https://www.olx.pl/fast'},{'url':'https://www.olx.pl/slow'}],'model_ids':['13']}
+        def fetch(session,search,timeout):
+            if search['url'].endswith('/slow'):
+                slow_observed.append(delivered.wait(2))
+                return []
+            return [ad]
+        def send(*args):
+            delivered.set()
+            return True
+        with tempfile.TemporaryDirectory() as tmp,patch.object(bot,'STATE_PATH',Path(tmp)/'seen.json'),patch.object(bot,'load_config',return_value=cfg),patch.object(bot,'fetch_search',side_effect=fetch),patch.object(bot,'send_alert',side_effect=send),patch.object(bot,'publish_status'):
+            bot.save_state({'initialized':True,'seen_ids':[]})
+            self.assertEqual(bot.run_once(),0)
+            self.assertEqual(slow_observed,[True])
+
+    def test_incomplete_rejected_copy_does_not_hide_valid_copy(self):
+        from threading import Event
+        first=Event()
+        invalid=bot.parse_rss(FEED)[0]
+        invalid.price='Cena niepodana'
+        valid=bot.parse_rss(FEED)[0]
+        cfg={'searches':[{'url':'https://www.olx.pl/incomplete'},{'url':'https://www.olx.pl/complete'}],'model_ids':['13'],'price_min':100}
+        def fetch(session,search,timeout):
+            if search['url'].endswith('/incomplete'):
+                return [invalid]
+            first.wait(2)
+            return [valid]
+        original_filter=bot.is_flip_candidate
+        def check(ad,cfg):
+            result=original_filter(ad,cfg)
+            if ad is invalid:first.set()
+            return result
+        with tempfile.TemporaryDirectory() as tmp,patch.object(bot,'STATE_PATH',Path(tmp)/'seen.json'),patch.object(bot,'load_config',return_value=cfg),patch.object(bot,'fetch_search',side_effect=fetch),patch.object(bot,'send_alert',return_value=True) as send,patch.object(bot,'publish_status'),patch.object(bot,'is_flip_candidate',side_effect=check):
+            bot.save_state({'initialized':True,'seen_ids':[]})
+            self.assertEqual(bot.run_once(),0)
+            send.assert_called_once_with(valid,20)
+            self.assertNotIn(valid.listing_id,bot.load_state()['rejected_ids'])
