@@ -1,0 +1,32 @@
+name: Test prywatnego cennika
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/pricing-check.yml]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Sprawdź cennik i dostarczenie przykładu
+        env:
+          RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import os
+          import bot
+          table = bot.resale_table()
+          assert table.get('rows'), 'Prywatny cennik nie jest dostępny.'
+          sample = bot.Listing('pricing-test', 'TEST: iPhone 11 64GB — to nie jest oferta', 'https://www.olx.pl/', price='200 zł (przykładowy zakup)', source='Test prywatnego cennika')
+          assert 'Zysk przed kosztami' in bot.resale_estimate(sample), 'Nie udało się obliczyć przykładu.'
+          bot.send_discord(os.environ['DISCORD_WEBHOOK_URL'], sample, 20)
+          print('Prywatny cennik odczytany; Discord potwierdził wiadomość testową.')
+          PY
