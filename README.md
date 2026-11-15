@@ -4,11 +4,13 @@ Monitor korzysta z publicznego generatora OLX RSS pod adresem https://tedeelock.
 
 To niezależny, zewnętrzny serwis. Nie ma potwierdzonej gwarancji dostępności, kompletności ani świeżości danych. Sprawdzanie co 5 minut nie gwarantuje, że samo źródło odświeża dane w tym rytmie. Pierwszy przebieg ustala historię bez alertów; późniejsze wysyłają nowo wykryte ID. Wyniki mogą obejmować promowane oferty. Dane są ograniczone do ofert udostępnionych przez kanał.
 
-## Stan wdrożenia i test Discorda
+## Stan wdrożenia
 
-Ostatni potwierdzony przebieg z GitHub Actions zwrócił HTTP 403 dla wszystkich trzech wyszukiwań. Te poprawki nie usuwają odmowy dostępu OLX. Nie uznawaj projektu za uruchomiony, dopóki odczyt ofert i dostarczenie powiadomienia nie zostaną potwierdzone na GitHubie.
+W historii jest wcześniejszy przebieg z HTTP 403, ale nowszy skan 15 listopada o 06:35 UTC zakończył się poprawnie; lokalny odczyt publicznego RSS również zwrócił HTTP 200. Kod nie obchodzi odmowy dostępu OLX. Osobny test webhooka Discorda nadal trzeba uruchomić ręcznie, żeby potwierdzić dostarczenie wiadomości.
 
-W Actions wybierz `iPhone Sniper OLX` → `Run workflow` i zaznacz `test_discord`, aby wysłać pojedynczą wiadomość testową bez pobierania ofert. Webhook pozostaje w sekrecie `DISCORD_WEBHOOK_URL`. Test działa niezależnie od blokady OLX i nie zmienia historii ofert.
+W Actions wybierz `iPhone Sniper OLX` → `Run workflow` i zaznacz `test_discord`, aby wysłać pojedynczą wiadomość testową bez pobierania ofert. Webhook pozostaje w sekrecie `DISCORD_WEBHOOK_URL`. Test działa niezależnie od blokady OLX i nie zmienia historii ofert. Test jest ręczny, żeby zwykłe zmiany kodu nie wysyłały wiadomości na serwer.
+
+Sterowanie filtrami komendami Discorda opisuje [DISCORD_SETUP.md](DISCORD_SETUP.md). Historia GitHub Actions potwierdza także udaną rejestrację komend 15 listopada o 07:10 UTC.
 
 Poprawiona wersja zapamiętuje pierwsze poprawne skanowanie osobno dla każdego wyszukiwania, zachowuje kolejność historii, ponawia nieudane alerty i oznacza częściowe błędy jako nieudany przebieg. Stan poprawnie obsłużonych ofert zapisuje się także po częściowym błędzie.
 
@@ -18,22 +20,18 @@ Bot sprawdza zapisane wyszukiwania OLX i wysyła nowe pasujące ogłoszenia na D
 
 ## Co jest ustawione
 
-- iPhone 11, 12 i 13, również warianty Pro / Pro Max / mini, jeśli OLX zwróci je w wynikach.
-- iPhone 14 i nowsze nie są uwzględniane.
+- iPhone 11–15, również warianty Pro / Pro Max / mini, jeśli źródło zwróci je w wynikach.
+- iPhone 16 i nowsze nie są uwzględniane.
 - Odrzucane są typowe ogłoszenia z akcesoriami, np. etui, szkła, kable i ładowarki.
 - Nie ma sztywnego limitu ceny ani lokalizacji. Możesz dodać je w filtrach OLX i wkleić własny adres wyszukiwania do `config.json`.
 - Pierwsze uruchomienie zapisuje aktualnie widoczne ogłoszenia bez wysyłania ich jako nowych. Powiadomienia ruszają dla kolejnych publikacji.
 
 ## Najprostsze uruchomienie w chmurze: GitHub Actions
 
-1. Utwórz repozytorium na GitHubie. Najtańszy wariant to repozytorium publiczne: standardowe uruchomienia Actions są wtedy bezpłatne. Kod i plik z ID ogłoszeń będą publiczne, ale tokeny dodane jako GitHub Secrets nie są publikowane. Nie wpisuj sekretów do `config.json` ani kodu.
-
-   Prywatne repozytorium też zadziała, ale przy sprawdzaniu co 5 minut każde uruchomienie jest rozliczane co najmniej za pełną minutę. Na GitHub Free może to przekroczyć miesięczny limit bezpłatnego użycia. Sprawdź aktualne limity na swoim koncie.
-2. Rozpakuj ZIP i wgraj do repozytorium całą zawartość folderu `iphone_sniper_bot` (razem z folderem `.github`).
-3. Na Discordzie otwórz ustawienia swojego serwera → Integracje → Webhooki → Nowy webhook. Wybierz kanał na alerty i skopiuj adres webhooka.
-4. W repozytorium GitHub przejdź do Settings → Secrets and variables → Actions → New repository secret. Dodaj sekret o nazwie `DISCORD_WEBHOOK_URL` i wklej do niego skopiowany adres. Nie wpisuj go do plików i nikomu go nie wysyłaj.
-5. Otwórz zakładkę Actions i włącz workflow, jeśli GitHub o to poprosi. Możesz uruchomić go ręcznie przez `iPhone Sniper OLX` → Run workflow.
-6. Pierwszy przebieg zapisze obecne oferty. Kolejne przebiegi będą wysyłać tylko nowe, pasujące ogłoszenia.
+1. W Discordzie otwórz ustawienia serwera → Integracje → Webhooki → Nowy webhook. Wybierz kanał alertów i skopiuj adres.
+2. W repozytorium przejdź do Settings → Secrets and variables → Actions → New repository secret. Dodaj `DISCORD_WEBHOOK_URL` i wklej adres webhooka. Nie dodawaj go do plików ani wiadomości.
+3. Otwórz zakładkę Actions i włącz workflow, jeśli GitHub o to poprosi. Uruchom `iPhone Sniper OLX` ręcznie, by sprawdzić konfigurację.
+4. Pierwszy poprawny przebieg zapisze obecne oferty bez alertów; następne powinny wysyłać nowe pasujące ogłoszenia.
 
 Workflow jest ustawiony na sprawdzanie co 5 minut. GitHub może czasami opóźnić zaplanowane uruchomienie. Przy prywatnym repozytorium sprawdź limit minut GitHub Actions na swoim koncie.
 
@@ -57,7 +55,7 @@ Możesz dodać dowolną liczbę obiektów do `searches`. Przykładowo osobne wys
 
 ## Uruchomienie lokalne do testu
 
-Wymagany Python 3.10 lub nowszy.
+Wymagany Python 3.10 lub nowszy. Po skopiowaniu `.env.example` do `.env` wpisz potrzebne ustawienia lokalne. Nie commituj pliku `.env`.
 
 ```bash
 python -m venv .venv

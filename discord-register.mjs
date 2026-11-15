@@ -1,4 +1,4 @@
-// Run once locally with DISCORD_BOT_TOKEN, DISCORD_APP_ID and DISCORD_GUILD_ID.
+// Registers the application-wide command list; requires DISCORD_BOT_TOKEN.
 const text=(name,description)=>({type:3,name,description,required:true});
 const integer=(name,description,required=false)=>({type:4,name,description,required,min_value:0,max_value:100000});
 const commands=[
@@ -8,8 +8,16 @@ const commands=[
  {name:'cena',description:'Zmień ceny; brak maksimum usuwa górny limit',options:[integer('minimum','Cena minimalna'),integer('maksimum','Cena maksymalna')]},
  {name:'pauza',description:'Wstrzymaj alerty'}, {name:'start',description:'Wznów alerty'}
 ].map(c=>({...c,type:1,default_member_permissions:'0'}));
-const {DISCORD_BOT_TOKEN:token,DISCORD_APP_ID:app,DISCORD_GUILD_ID:guild}=process.env;
-if(!token||!/^\d+$/.test(app||'')||!/^\d+$/.test(guild||''))throw Error('Brak tokenu lub ID aplikacji/serwera w zmiennych środowiskowych.');
-const r=await fetch(`https://discord.com/api/v10/applications/${app}/guilds/${guild}/commands`,{method:'PUT',headers:{Authorization:`Bot ${token}`,'Content-Type':'application/json'},body:JSON.stringify(commands)});
+const token=process.env.DISCORD_BOT_TOKEN;
+if(!token)throw Error('Brak sekretu DISCORD_BOT_TOKEN.');
+const headers={Authorization:`Bot ${token}`,'Content-Type':'application/json'};
+const info=await fetch('https://discord.com/api/v10/oauth2/applications/@me',{headers});
+if(!info.ok)throw Error(`Nie można zweryfikować tokenu bota: HTTP ${info.status}`);
+const identity=await info.json();
+const owner=identity.team?.owner_user_id||identity.owner?.id;
+if(!identity.id||!owner)throw Error('Nie można ustalić ID aplikacji lub jej właściciela.');
+const r=await fetch(`https://discord.com/api/v10/applications/${identity.id}/commands`,{method:'PUT',headers,body:JSON.stringify(commands)});
 if(!r.ok)throw Error(`Rejestracja nieudana: HTTP ${r.status}`);
-console.log('Zarejestrowano komendy. Dostęp wymaga uprawnień administratora; endpoint dodatkowo sprawdza OWNER_ID.');
+const registered=await r.json();
+console.log(`Zarejestrowano ${registered.length} komend globalnych: ${registered.map(c=>c.name).join(', ')}`);
+console.log(`OWNER_ID=${owner}`);
