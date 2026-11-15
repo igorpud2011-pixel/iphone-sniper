@@ -490,31 +490,49 @@ def resale_estimate(listing: Listing) -> str:
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     place = listing.location_name or extract_location(listing.location_date)[0] or "Nie podano"
     distance = distance_from_wilkowice(place)
-    embed: dict[str, Any] = {
-        "title": "📱 " + listing.title[:250],
-        "description": "**" + listing.price[:100] + "** · " + place[:150],
-        "timestamp": datetime.now(ZoneInfo("UTC")).isoformat(),
-        "url": listing.url,
-        "fields": [
-            {"name": "Model", "value": phone_model(listing.title), "inline": True},
-            {"name": "Cena", "value": listing.price[:1024], "inline": True},
-            {"name": "Miejscowość", "value": place[:1024], "inline": True},
-            {"name": "Od Wilkowic", "value": f"około {distance} km (w linii prostej)" if distance is not None else "brak danych o odległości", "inline": True},
-        ],
-        "color": 0x2ECC71,
-        "footer": {"text": f"iPhone Sniper • {listing.source}"},
-    }
+    estimate = resale_estimate(listing)
+    lines = estimate.splitlines()
+    prices = []
+    notes = []
+    for line in lines:
+        if line.startswith("Twoja cena sprzedaży:"):
+            prices.append("💰 **Sprzedaż:** " + line.split(":", 1)[1].strip())
+        elif line.startswith("Zysk przed kosztami:"):
+            prices.append("📈 **Zysk przed kosztami:** " + line.split(":", 1)[1].strip())
+        elif line.startswith("Cennik:"):
+            continue
+        else:
+            notes.append(line)
+    # A single embed keeps all information inside the dark card on mobile.
+    price_match = re.search(r"[\d][\d \u00a0\u202f]*(?:[,.]\d{1,2})?\s*zł", listing.price, flags=re.IGNORECASE)
+    asking = price_match.group().strip() if price_match else listing.price[:100]
+    body = ["🏷️ **Zakup:** **" + asking + "**", *prices]
+    if notes:
+        body.append("\n" + "\n".join(notes))
+    location = f"📍 {place}"
+    if distance is not None:
+        location += f" · ~{distance} km od Wilkowic"
+    body.append("\n" + location)
     posted = extract_location(listing.location_date)[1]
     if posted:
-        embed["fields"].append({"name": "Wystawiono", "value": posted[:1024], "inline": True})
-    embed["fields"].append({"name": "⏱️ Wykrycie i odczyt", "value": capture_timing(listing), "inline": False})
+        body.append("🕒 OLX: " + posted[:200])
+    timestamp = listing.detected_at or int(time.time())
+    timing = f"⚡ Wykryto <t:{timestamp}:t> · <t:{timestamp}:R>"
+    if listing.fetch_seconds is not None:
+        timing += f" · odczyt {listing.fetch_seconds:.1f} s"
+    body.append(timing)
+    testing = listing.listing_id in {"test", "pricing-test"}
+    if testing:
+        capacity = re.search(r"\b(32|64|128|256|512|1|2)\s*(GB|TB)\b", listing.title, flags=re.IGNORECASE)
+        title = "🧪 TEST · " + phone_model(listing.title) + (" · " + capacity.group() if capacity else "")
+    else:
+        title = "📱 " + listing.title[:250]
+    embed = {"title":title, "url":listing.url, "description":"\n".join(body)[:4096],
+             "color":0x2ECC71, "timestamp":datetime.now(ZoneInfo("UTC")).isoformat(),
+             "footer":{"text":"TEST — to nie jest oferta" if testing else "iPhone Sniper • Zysk bez napraw, prowizji i transportu • Opóźnienie publikacji w RSS nieznane"}}
     if listing.image_url:
-        embed["image"] = {"url": listing.image_url}
-    estimate = resale_estimate(listing)
-    estimate = estimate.replace("Twoja cena sprzedaży:", "## 💰 Twoja cena sprzedaży:").replace("Zysk przed kosztami:", "## 📈 Zysk przed kosztami:")
-    heading = "TEST WIADOMOŚCI" if listing.listing_id in {"test", "pricing-test"} else "NOWA OFERTA"
-    content = f"# 📱 {heading} · {phone_model(listing.title)}\n## 🏷️ Cena zakupu: **{listing.price[:100]}**\n{estimate}"
-    response = requests.post(webhook_url, json={"content": content[:2000], "embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
+        embed["image"] = {"url":listing.image_url}
+    response = requests.post(webhook_url, json={"content":"", "embeds":[embed], "allowed_mentions":{"parse":[]}}, timeout=timeout)
     response.raise_for_status()
 
 
