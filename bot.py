@@ -434,6 +434,7 @@ def format_plain(listing: Listing) -> str:
     posted = extract_location(listing.location_date)[1]
     if posted:
         parts.append(f"🕒 Wystawiono: {posted}")
+    parts.append(resale_estimate(listing))
     parts.extend([f"🔎 Wyszukiwanie: {listing.source}", listing.url])
     return "\n".join(parts)
 
@@ -444,6 +445,46 @@ def capture_timing(listing: Listing, now: datetime | None = None) -> str:
     if listing.fetch_seconds is not None:
         result += f"\nPobranie i odczyt źródła: {listing.fetch_seconds:.2f} s"
     return result + "\nOpóźnienie od publikacji: brak wiarygodnego pomiaru w RSS."
+
+
+@lru_cache(maxsize=1)
+def resale_table() -> dict[str, Any]:
+    raw = os.getenv("RESALE_PRICES_JSON", "").strip()
+    if not raw:
+        raise ValueError("Cennik nie został skonfigurowany.")
+    return json.loads(raw)
+
+
+def resale_estimate(listing: Listing) -> str:
+    try:
+        table = resale_table()
+    except (OSError, ValueError):
+        return "Cennik niedostępny. Nie wyliczam zysku."
+    model = detect_model(listing.title)
+    capacities = {int(n)*(1024 if unit.lower()=="tb" else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", listing.title, flags=re.IGNORECASE)}
+    rows = [r for r in table["rows"] if r["model"]==model]
+    exact = len(capacities)==1
+    if exact:
+        rows = [r for r in rows if r["storage_gb"]==next(iter(capacities))]
+    if not rows:
+        return "Brak ceny dla tego modelu/pamięci w Twojej tabeli."
+    if any(r["suspect"] for r in rows):
+        return "⚠️ Podejrzana wartość w tabeli. Wstrzymuję wyliczenie do sprawdzenia ceny."
+    prices = [r["sale_price"] for r in rows]
+    low, high = min(prices), max(prices)
+    money = lambda a,b: f"{a:g} zł" if a==b else f"{a:g}–{b:g} zł"
+    result = "Twoja cena sprzedaży: **" + money(low,high) + "**"
+    price = re.search(r"(?<![\d.,])(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:zł|pln)", listing.price, flags=re.IGNORECASE)
+    if price:
+        asking = float(re.sub(r"\s", "", price[1]).replace(",", "."))
+        result += "\nZysk przed kosztami: **" + money(low-asking,high-asking) + "**"
+    else:
+        result += "\nBrak rozpoznanej ceny zakupu."
+    if not exact:
+        result += "\nNieznana pamięć: zakres obejmuje warianty modelu."
+    elif low!=high:
+        result += "\nW tabeli są różne ceny tego samego wariantu."
+    return result + "\nCennik: " + table["date"] + "; bez napraw, prowizji i transportu."
 
 
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
@@ -467,6 +508,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     if posted:
         embed["fields"].append({"name": "Wystawiono", "value": posted[:1024], "inline": True})
     embed["fields"].append({"name": "⏱️ Wykrycie i odczyt", "value": capture_timing(listing), "inline": False})
+    embed["fields"].append({"name": "💰 Sprzedaż i zysk z Twojej tabeli", "value": resale_estimate(listing), "inline": False})
     if listing.image_url:
         embed["image"] = {"url": listing.image_url}
     response = requests.post(webhook_url, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
