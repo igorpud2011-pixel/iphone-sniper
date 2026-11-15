@@ -1,0 +1,3415 @@
+{
+  "source": "GeoNames PL dataset, CC BY 4.0; place centers in WGS84",
+  "center": {
+    "name": "Wilkowice",
+    "latitude": 49.76282,
+    "longitude": 19.08973
+  },
+  "places": [
+    {
+      "name": "Żywiec Stary",
+      "latitude": 49.71667,
+      "longitude": 19.21667
+    },
+    {
+      "name": "Żywiec",
+      "latitude": 49.68529,
+      "longitude": 19.19243
+    },
+    {
+      "name": "Zygodowice",
+      "latitude": 49.94327,
+      "longitude": 19.52631
+    },
+    {
+      "name": "Zwierzyniec",
+      "latitude": 50.13707,
+      "longitude": 19.00419
+    },
+    {
+      "name": "Zwardoń",
+      "latitude": 49.50387,
+      "longitude": 18.97622
+    },
+    {
+      "name": "Zwaków",
+      "latitude": 50.10793,
+      "longitude": 18.96482
+    },
+    {
+      "name": "Żurkowa",
+      "latitude": 49.74944,
+      "longitude": 19.19329
+    },
+    {
+      "name": "Żory",
+      "latitude": 50.04523,
+      "longitude": 18.70062
+    },
+    {
+      "name": "Złatna",
+      "latitude": 49.51667,
+      "longitude": 19.21667
+    },
+    {
+      "name": "Złatna",
+      "latitude": 49.495,
+      "longitude": 19.17492
+    },
+    {
+      "name": "Zielona",
+      "latitude": 49.97796,
+      "longitude": 19.16792
+    },
+    {
+      "name": "Ziajki",
+      "latitude": 50.05,
+      "longitude": 19.35
+    },
+    {
+      "name": "Zgoń",
+      "latitude": 50.08241,
+      "longitude": 18.83029
+    },
+    {
+      "name": "Zembrzyce",
+      "latitude": 49.77517,
+      "longitude": 19.6012
+    },
+    {
+      "name": "Zebrzydowice",
+      "latitude": 49.89032,
+      "longitude": 19.67291
+    },
+    {
+      "name": "Zebrzydowice",
+      "latitude": 49.87793,
+      "longitude": 18.61127
+    },
+    {
+      "name": "Żebracze",
+      "latitude": 49.93756,
+      "longitude": 19.01555
+    },
+    {
+      "name": "Zbytków",
+      "latitude": 49.92288,
+      "longitude": 18.72697
+    },
+    {
+      "name": "Zborowice",
+      "latitude": 49.83333,
+      "longitude": 19.31667
+    },
+    {
+      "name": "Zawoja",
+      "latitude": 49.64396,
+      "longitude": 19.54227
+    },
+    {
+      "name": "Zawodzie",
+      "latitude": 49.61782,
+      "longitude": 19.1243
+    },
+    {
+      "name": "Zawiść",
+      "latitude": 50.12619,
+      "longitude": 18.81904
+    },
+    {
+      "name": "Zawadka",
+      "latitude": 49.85459,
+      "longitude": 19.47601
+    },
+    {
+      "name": "Zator",
+      "latitude": 49.99604,
+      "longitude": 19.43799
+    },
+    {
+      "name": "Zasypnica",
+      "latitude": 49.73333,
+      "longitude": 19.58333
+    },
+    {
+      "name": "Zasole Bielańskie",
+      "latitude": 49.93951,
+      "longitude": 19.18076
+    },
+    {
+      "name": "Zaskawie",
+      "latitude": 49.8792,
+      "longitude": 19.51911
+    },
+    {
+      "name": "Zarzyna",
+      "latitude": 50.08333,
+      "longitude": 19.15
+    },
+    {
+      "name": "Zarzecze",
+      "latitude": 49.71932,
+      "longitude": 19.17526
+    },
+    {
+      "name": "Żarki",
+      "latitude": 50.08259,
+      "longitude": 19.35199
+    },
+    {
+      "name": "Zarębki",
+      "latitude": 49.88333,
+      "longitude": 19.58333
+    },
+    {
+      "name": "Zamoście",
+      "latitude": 50.13333,
+      "longitude": 19.08333
+    },
+    {
+      "name": "Zamłynie",
+      "latitude": 49.93333,
+      "longitude": 18.93333
+    },
+    {
+      "name": "Zamarski",
+      "latitude": 49.78254,
+      "longitude": 18.66972
+    },
+    {
+      "name": "Zalas",
+      "latitude": 49.79833,
+      "longitude": 19.54863
+    },
+    {
+      "name": "Zakrzów",
+      "latitude": 49.82558,
+      "longitude": 19.64973
+    },
+    {
+      "name": "Zagrody",
+      "latitude": 49.7,
+      "longitude": 19.43333
+    },
+    {
+      "name": "Zagórze",
+      "latitude": 50.09449,
+      "longitude": 19.40357
+    },
+    {
+      "name": "Zagórnik",
+      "latitude": 49.8371,
+      "longitude": 19.37868
+    },
+    {
+      "name": "Zadziele",
+      "latitude": 49.72304,
+      "longitude": 19.2338
+    },
+    {
+      "name": "Zachełmna",
+      "latitude": 49.799,
+      "longitude": 19.68879
+    },
+    {
+      "name": "Zabrzeg",
+      "latitude": 50.06729,
+      "longitude": 19.18958
+    },
+    {
+      "name": "Zabrzeg",
+      "latitude": 49.91619,
+      "longitude": 18.94292
+    },
+    {
+      "name": "Zaborze",
+      "latitude": 50.02175,
+      "longitude": 19.24067
+    },
+    {
+      "name": "Zaborze",
+      "latitude": 49.87279,
+      "longitude": 18.8037
+    },
+    {
+      "name": "Żabnica",
+      "latitude": 49.58139,
+      "longitude": 19.15621
+    },
+    {
+      "name": "Zabłocie",
+      "latitude": 49.90282,
+      "longitude": 18.78147
+    },
+    {
+      "name": "Zabawa",
+      "latitude": 49.85,
+      "longitude": 19.05
+    },
+    {
+      "name": "Wysoka",
+      "latitude": 49.90713,
+      "longitude": 19.60356
+    },
+    {
+      "name": "Wyry",
+      "latitude": 50.13296,
+      "longitude": 18.90052
+    },
+    {
+      "name": "Wyrąbana",
+      "latitude": 49.98333,
+      "longitude": 19.56667
+    },
+    {
+      "name": "Wymysłów",
+      "latitude": 49.87251,
+      "longitude": 18.59539
+    },
+    {
+      "name": "Wygiełzów",
+      "latitude": 50.06667,
+      "longitude": 19.1
+    },
+    {
+      "name": "Wróblówki",
+      "latitude": 49.98333,
+      "longitude": 19.53333
+    },
+    {
+      "name": "Wróblowice",
+      "latitude": 49.82073,
+      "longitude": 19.12015
+    },
+    {
+      "name": "Woźniki",
+      "latitude": 49.93774,
+      "longitude": 19.49078
+    },
+    {
+      "name": "Woszczyce",
+      "latitude": 50.08413,
+      "longitude": 18.75979
+    },
+    {
+      "name": "Worniczki",
+      "latitude": 49.45,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Wola",
+      "latitude": 50.01745,
+      "longitude": 19.12333
+    },
+    {
+      "name": "Włosienica",
+      "latitude": 50.01822,
+      "longitude": 19.31671
+    },
+    {
+      "name": "Witkowice",
+      "latitude": 49.90746,
+      "longitude": 19.27963
+    },
+    {
+      "name": "Witanowice",
+      "latitude": 49.91796,
+      "longitude": 19.52579
+    },
+    {
+      "name": "Wiślica",
+      "latitude": 49.8211,
+      "longitude": 18.78302
+    },
+    {
+      "name": "Wisła Wielka",
+      "latitude": 49.95406,
+      "longitude": 18.85298
+    },
+    {
+      "name": "Wisła Mała",
+      "latitude": 49.94048,
+      "longitude": 18.7887
+    },
+    {
+      "name": "Wisła",
+      "latitude": 49.65629,
+      "longitude": 18.8591
+    },
+    {
+      "name": "Wioski",
+      "latitude": 50.14258,
+      "longitude": 19.17492
+    },
+    {
+      "name": "Wilkowyje",
+      "latitude": 50.1459,
+      "longitude": 18.95331
+    },
+    {
+      "name": "Wilkowski",
+      "latitude": 49.71667,
+      "longitude": 18.95
+    },
+    {
+      "name": "Wilkowice",
+      "latitude": 49.76282,
+      "longitude": 19.08973
+    },
+    {
+      "name": "Wilczkowice",
+      "latitude": 49.98655,
+      "longitude": 19.19415
+    },
+    {
+      "name": "Wilamowice",
+      "latitude": 49.91701,
+      "longitude": 19.15237
+    },
+    {
+      "name": "Wieszczela",
+      "latitude": 49.82927,
+      "longitude": 18.86121
+    },
+    {
+      "name": "Wieprz",
+      "latitude": 49.89093,
+      "longitude": 19.35688
+    },
+    {
+      "name": "Wieprz",
+      "latitude": 49.64746,
+      "longitude": 19.18007
+    },
+    {
+      "name": "Węgry",
+      "latitude": 49.93333,
+      "longitude": 18.7
+    },
+    {
+      "name": "Węgierska Górka",
+      "latitude": 49.60776,
+      "longitude": 19.11638
+    },
+    {
+      "name": "Wartogłowiec",
+      "latitude": 50.12592,
+      "longitude": 19.01008
+    },
+    {
+      "name": "Warszowice",
+      "latitude": 49.98988,
+      "longitude": 18.71349
+    },
+    {
+      "name": "Walczakula",
+      "latitude": 49.68333,
+      "longitude": 18.98333
+    },
+    {
+      "name": "Walaszków",
+      "latitude": 49.78333,
+      "longitude": 19.33333
+    },
+    {
+      "name": "Wadowice",
+      "latitude": 49.88335,
+      "longitude": 19.49292
+    },
+    {
+      "name": "Ustroń",
+      "latitude": 49.72153,
+      "longitude": 18.80198
+    },
+    {
+      "name": "Urbanowice",
+      "latitude": 50.11667,
+      "longitude": 19.06667
+    },
+    {
+      "name": "Ujsoły",
+      "latitude": 49.4829,
+      "longitude": 19.13801
+    },
+    {
+      "name": "Uchylany",
+      "latitude": 49.86667,
+      "longitude": 18.83333
+    },
+    {
+      "name": "Tychy",
+      "latitude": 50.13717,
+      "longitude": 18.96641
+    },
+    {
+      "name": "Trzebinia",
+      "latitude": 49.65024,
+      "longitude": 19.22264
+    },
+    {
+      "name": "Trzebieńczyce",
+      "latitude": 49.97722,
+      "longitude": 19.45507
+    },
+    {
+      "name": "Tresna",
+      "latitude": 49.73735,
+      "longitude": 19.20805
+    },
+    {
+      "name": "Tomniszów",
+      "latitude": 49.53333,
+      "longitude": 19.11667
+    },
+    {
+      "name": "Tomice",
+      "latitude": 49.89773,
+      "longitude": 19.48357
+    },
+    {
+      "name": "Tokarnia",
+      "latitude": 49.68333,
+      "longitude": 18.86667
+    },
+    {
+      "name": "Tłuczań",
+      "latitude": 49.95553,
+      "longitude": 19.57712
+    },
+    {
+      "name": "Tarnawa Górna",
+      "latitude": 49.78016,
+      "longitude": 19.51378
+    },
+    {
+      "name": "Tarnawa Dolna",
+      "latitude": 49.7796,
+      "longitude": 19.56545
+    },
+    {
+      "name": "Tarliczna",
+      "latitude": 49.5264,
+      "longitude": 19.02986
+    },
+    {
+      "name": "Targoszów",
+      "latitude": 49.76186,
+      "longitude": 19.45576
+    },
+    {
+      "name": "Targanice",
+      "latitude": 49.80575,
+      "longitude": 19.32444
+    },
+    {
+      "name": "Targanica",
+      "latitude": 49.81667,
+      "longitude": 19.33333
+    },
+    {
+      "name": "Szyjki",
+      "latitude": 50.06667,
+      "longitude": 19.3
+    },
+    {
+      "name": "Szpaki",
+      "latitude": 49.53333,
+      "longitude": 19.03333
+    },
+    {
+      "name": "Szoszowy",
+      "latitude": 50.00258,
+      "longitude": 18.73221
+    },
+    {
+      "name": "Szeroka",
+      "latitude": 49.99916,
+      "longitude": 18.61544
+    },
+    {
+      "name": "Szczytkówka",
+      "latitude": 49.4655,
+      "longitude": 19.13286
+    },
+    {
+      "name": "Szczyrk",
+      "latitude": 49.71724,
+      "longitude": 19.03183
+    },
+    {
+      "name": "Szczerbakówka",
+      "latitude": 49.41667,
+      "longitude": 19.13333
+    },
+    {
+      "name": "Szare",
+      "latitude": 49.561,
+      "longitude": 19.05359
+    },
+    {
+      "name": "Świrkowice",
+      "latitude": 49.86091,
+      "longitude": 19.00462
+    },
+    {
+      "name": "Świnna Poręba",
+      "latitude": 49.83643,
+      "longitude": 19.52133
+    },
+    {
+      "name": "Świnna",
+      "latitude": 49.65802,
+      "longitude": 19.25406
+    },
+    {
+      "name": "Świętoszówka",
+      "latitude": 49.80481,
+      "longitude": 18.90044
+    },
+    {
+      "name": "Świerczyniec",
+      "latitude": 50.06479,
+      "longitude": 19.04938
+    },
+    {
+      "name": "Suszec",
+      "latitude": 50.02958,
+      "longitude": 18.7916
+    },
+    {
+      "name": "Stary Suszec",
+      "latitude": 50.04799,
+      "longitude": 18.76431
+    },
+    {
+      "name": "Sumery",
+      "latitude": 49.65,
+      "longitude": 19.31667
+    },
+    {
+      "name": "Sułkowice",
+      "latitude": 49.81932,
+      "longitude": 19.35988
+    },
+    {
+      "name": "Sułki",
+      "latitude": 49.5,
+      "longitude": 19.2
+    },
+    {
+      "name": "Suchodębie",
+      "latitude": 50.05,
+      "longitude": 19.31667
+    },
+    {
+      "name": "Sucha Góra",
+      "latitude": 49.65,
+      "longitude": 19.63333
+    },
+    {
+      "name": "Sucha Beskidzka",
+      "latitude": 49.74188,
+      "longitude": 19.59429
+    },
+    {
+      "name": "Studzionka",
+      "latitude": 49.96232,
+      "longitude": 18.7728
+    },
+    {
+      "name": "Studzienice",
+      "latitude": 50.01839,
+      "longitude": 18.9828
+    },
+    {
+      "name": "Stryszów",
+      "latitude": 49.82569,
+      "longitude": 19.61763
+    },
+    {
+      "name": "Stryszawa",
+      "latitude": 49.71327,
+      "longitude": 19.52185
+    },
+    {
+      "name": "Strumień",
+      "latitude": 49.92103,
+      "longitude": 18.76637
+    },
+    {
+      "name": "Stronie",
+      "latitude": 49.83056,
+      "longitude": 19.67497
+    },
+    {
+      "name": "Stecówka",
+      "latitude": 49.58665,
+      "longitude": 18.9403
+    },
+    {
+      "name": "Stawy Monowskie",
+      "latitude": 50.02437,
+      "longitude": 19.33756
+    },
+    {
+      "name": "Stawy Grojeckie",
+      "latitude": 49.98333,
+      "longitude": 19.21667
+    },
+    {
+      "name": "Stare Stawy",
+      "latitude": 50.02718,
+      "longitude": 19.22105
+    },
+    {
+      "name": "Stara Wieś",
+      "latitude": 50.00437,
+      "longitude": 18.91913
+    },
+    {
+      "name": "Stara Wieś",
+      "latitude": 49.90879,
+      "longitude": 19.11346
+    },
+    {
+      "name": "Stanisław Górny",
+      "latitude": 49.91155,
+      "longitude": 19.62931
+    },
+    {
+      "name": "Stanisław Dolny",
+      "latitude": 49.9047,
+      "longitude": 19.65334
+    },
+    {
+      "name": "Stachorówka",
+      "latitude": 49.73333,
+      "longitude": 19.56667
+    },
+    {
+      "name": "Spytkowice",
+      "latitude": 49.99671,
+      "longitude": 19.51103
+    },
+    {
+      "name": "Sporysz",
+      "latitude": 49.68333,
+      "longitude": 19.23333
+    },
+    {
+      "name": "Spiwlówka",
+      "latitude": 49.76667,
+      "longitude": 19.61667
+    },
+    {
+      "name": "Sordelówka",
+      "latitude": 49.8,
+      "longitude": 19.36667
+    },
+    {
+      "name": "Sopotnia Wielka",
+      "latitude": 49.56853,
+      "longitude": 19.28289
+    },
+    {
+      "name": "Sopotnia Mała",
+      "latitude": 49.61382,
+      "longitude": 19.27259
+    },
+    {
+      "name": "Sól",
+      "latitude": 49.48764,
+      "longitude": 19.04171
+    },
+    {
+      "name": "Smolice",
+      "latitude": 50.02737,
+      "longitude": 19.4573
+    },
+    {
+      "name": "Smardzowice",
+      "latitude": 50.13396,
+      "longitude": 19.14425
+    },
+    {
+      "name": "Słotwina",
+      "latitude": 49.69967,
+      "longitude": 19.07415
+    },
+    {
+      "name": "Śleszowice",
+      "latitude": 49.7826,
+      "longitude": 19.5254
+    },
+    {
+      "name": "Ślemień",
+      "latitude": 49.71826,
+      "longitude": 19.36735
+    },
+    {
+      "name": "Ślązacy",
+      "latitude": 49.6,
+      "longitude": 19.05
+    },
+    {
+      "name": "Skrzeczkowice",
+      "latitude": 50.0157,
+      "longitude": 18.62573
+    },
+    {
+      "name": "Skrbeńsko",
+      "latitude": 49.90685,
+      "longitude": 18.5281
+    },
+    {
+      "name": "Skotnica",
+      "latitude": 50.10122,
+      "longitude": 19.32471
+    },
+    {
+      "name": "Skoczów",
+      "latitude": 49.80089,
+      "longitude": 18.7877
+    },
+    {
+      "name": "Skidziń",
+      "latitude": 49.97905,
+      "longitude": 19.19861
+    },
+    {
+      "name": "Skawica",
+      "latitude": 49.67718,
+      "longitude": 19.62321
+    },
+    {
+      "name": "Skawce",
+      "latitude": 49.80075,
+      "longitude": 19.58765
+    },
+    {
+      "name": "Skalica",
+      "latitude": 49.71154,
+      "longitude": 18.8296
+    },
+    {
+      "name": "Skała Mała",
+      "latitude": 49.58333,
+      "longitude": 18.96667
+    },
+    {
+      "name": "Simoradz",
+      "latitude": 49.81185,
+      "longitude": 18.7601
+    },
+    {
+      "name": "Sikowiec",
+      "latitude": 50.0242,
+      "longitude": 18.79868
+    },
+    {
+      "name": "Sienna",
+      "latitude": 49.67696,
+      "longitude": 19.14883
+    },
+    {
+      "name": "Seretnik",
+      "latitude": 49.71667,
+      "longitude": 19.38333
+    },
+    {
+      "name": "Ściernie",
+      "latitude": 50.08571,
+      "longitude": 19.13946
+    },
+    {
+      "name": "Soblówka",
+      "latitude": 49.43559,
+      "longitude": 19.14308
+    },
+    {
+      "name": "Rzyki",
+      "latitude": 49.81129,
+      "longitude": 19.39619
+    },
+    {
+      "name": "Ryczów",
+      "latitude": 49.98103,
+      "longitude": 19.55017
+    },
+    {
+      "name": "Rychwałdek",
+      "latitude": 49.6784,
+      "longitude": 19.28487
+    },
+    {
+      "name": "Rychwałd",
+      "latitude": 49.69512,
+      "longitude": 19.27656
+    },
+    {
+      "name": "Rychuld",
+      "latitude": 49.88918,
+      "longitude": 18.69921
+    },
+    {
+      "name": "Rycerka Górna",
+      "latitude": 49.44436,
+      "longitude": 19.01596
+    },
+    {
+      "name": "Rycerka Dolna",
+      "latitude": 49.47805,
+      "longitude": 19.06162
+    },
+    {
+      "name": "Rybarzowice",
+      "latitude": 49.72956,
+      "longitude": 19.10162
+    },
+    {
+      "name": "Rudziczka",
+      "latitude": 50.03608,
+      "longitude": 18.76225
+    },
+    {
+      "name": "Rudzica",
+      "latitude": 49.84861,
+      "longitude": 18.89702
+    },
+    {
+      "name": "Rudze",
+      "latitude": 49.96845,
+      "longitude": 19.42898
+    },
+    {
+      "name": "Rudówka",
+      "latitude": 49.96679,
+      "longitude": 19.0212
+    },
+    {
+      "name": "Rudnik",
+      "latitude": 49.83228,
+      "longitude": 18.69204
+    },
+    {
+      "name": "Roztropice",
+      "latitude": 49.8384,
+      "longitude": 18.85883
+    },
+    {
+      "name": "Roztoki",
+      "latitude": 49.7,
+      "longitude": 19.5
+    },
+    {
+      "name": "Roztoki",
+      "latitude": 49.53333,
+      "longitude": 19.55
+    },
+    {
+      "name": "Rozkochów",
+      "latitude": 50.04479,
+      "longitude": 19.49009
+    },
+    {
+      "name": "Równica",
+      "latitude": 49.73333,
+      "longitude": 18.83333
+    },
+    {
+      "name": "Równia",
+      "latitude": 49.72748,
+      "longitude": 18.77718
+    },
+    {
+      "name": "Roków",
+      "latitude": 49.89596,
+      "longitude": 19.53283
+    },
+    {
+      "name": "Rogoźna",
+      "latitude": 50.03624,
+      "longitude": 18.65437
+    },
+    {
+      "name": "Roczyny",
+      "latitude": 49.8537,
+      "longitude": 19.31568
+    },
+    {
+      "name": "Renardowice",
+      "latitude": 49.92578,
+      "longitude": 18.99664
+    },
+    {
+      "name": "Rajsko",
+      "latitude": 50.01193,
+      "longitude": 19.19294
+    },
+    {
+      "name": "Rajcza",
+      "latitude": 49.50927,
+      "longitude": 19.11278
+    },
+    {
+      "name": "Radziechowy",
+      "latitude": 49.64651,
+      "longitude": 19.13115
+    },
+    {
+      "name": "Radostowice",
+      "latitude": 50.00311,
+      "longitude": 18.88103
+    },
+    {
+      "name": "Radocza",
+      "latitude": 49.91774,
+      "longitude": 19.47498
+    },
+    {
+      "name": "Rabusiowice",
+      "latitude": 50.01394,
+      "longitude": 19.46742
+    },
+    {
+      "name": "Puszcza",
+      "latitude": 49.81667,
+      "longitude": 19.3
+    },
+    {
+      "name": "Puńców",
+      "latitude": 49.71842,
+      "longitude": 18.66157
+    },
+    {
+      "name": "Pudowie",
+      "latitude": 49.66667,
+      "longitude": 19.35
+    },
+    {
+      "name": "Pszczyna",
+      "latitude": 49.98037,
+      "longitude": 18.95382
+    },
+    {
+      "name": "Przywarówka",
+      "latitude": 49.55,
+      "longitude": 19.55
+    },
+    {
+      "name": "Przyręb",
+      "latitude": 50.01667,
+      "longitude": 19.06667
+    },
+    {
+      "name": "Przyłęków",
+      "latitude": 49.6389,
+      "longitude": 19.25363
+    },
+    {
+      "name": "Przybradz",
+      "latitude": 49.94039,
+      "longitude": 19.43207
+    },
+    {
+      "name": "Przyborów",
+      "latitude": 49.6215,
+      "longitude": 19.38701
+    },
+    {
+      "name": "Przewóz",
+      "latitude": 50.01667,
+      "longitude": 19.55
+    },
+    {
+      "name": "Przeciszów",
+      "latitude": 50.00647,
+      "longitude": 19.37576
+    },
+    {
+      "name": "Przecieszyn",
+      "latitude": 49.97838,
+      "longitude": 19.17046
+    },
+    {
+      "name": "Pruchna",
+      "latitude": 49.86527,
+      "longitude": 18.68191
+    },
+    {
+      "name": "Poręba Wielka",
+      "latitude": 50.01116,
+      "longitude": 19.28375
+    },
+    {
+      "name": "Poręba",
+      "latitude": 49.98869,
+      "longitude": 18.87669
+    },
+    {
+      "name": "Porąbka",
+      "latitude": 49.81716,
+      "longitude": 19.21835
+    },
+    {
+      "name": "Poniwiec",
+      "latitude": 49.71667,
+      "longitude": 18.81667
+    },
+    {
+      "name": "Ponikiew",
+      "latitude": 49.83311,
+      "longitude": 19.46571
+    },
+    {
+      "name": "Półwieś",
+      "latitude": 49.97535,
+      "longitude": 19.56038
+    },
+    {
+      "name": "Policzne",
+      "latitude": 49.61667,
+      "longitude": 19.55
+    },
+    {
+      "name": "Polanka Wielka",
+      "latitude": 49.98501,
+      "longitude": 19.32615
+    },
+    {
+      "name": "Polana",
+      "latitude": 49.43333,
+      "longitude": 19.0
+    },
+    {
+      "name": "Pogwizdów",
+      "latitude": 49.80382,
+      "longitude": 18.60106
+    },
+    {
+      "name": "Pogorzyce",
+      "latitude": 50.10186,
+      "longitude": 19.42228
+    },
+    {
+      "name": "Podświnioszów",
+      "latitude": 49.85288,
+      "longitude": 18.6027
+    },
+    {
+      "name": "Podolsze",
+      "latitude": 50.01359,
+      "longitude": 19.43481
+    },
+    {
+      "name": "Podłęże",
+      "latitude": 50.02329,
+      "longitude": 19.55669
+    },
+    {
+      "name": "Podlesie",
+      "latitude": 50.01967,
+      "longitude": 19.37531
+    },
+    {
+      "name": "Podlesie",
+      "latitude": 50.01667,
+      "longitude": 18.73333
+    },
+    {
+      "name": "Podlesie",
+      "latitude": 50.00677,
+      "longitude": 18.99838
+    },
+    {
+      "name": "Podlesie",
+      "latitude": 49.9505,
+      "longitude": 19.14612
+    },
+    {
+      "name": "Podlesie",
+      "latitude": 49.91667,
+      "longitude": 18.95
+    },
+    {
+      "name": "Podlesie",
+      "latitude": 49.85436,
+      "longitude": 18.61241
+    },
+    {
+      "name": "Podlasie",
+      "latitude": 49.69124,
+      "longitude": 19.17416
+    },
+    {
+      "name": "Podlas",
+      "latitude": 49.8973,
+      "longitude": 18.92638
+    },
+    {
+      "name": "Podksięże",
+      "latitude": 49.73333,
+      "longitude": 19.61667
+    },
+    {
+      "name": "Podkomorek",
+      "latitude": 50.06667,
+      "longitude": 19.25
+    },
+    {
+      "name": "Podjaz",
+      "latitude": 49.93333,
+      "longitude": 18.9
+    },
+    {
+      "name": "Pochwacie",
+      "latitude": 49.97158,
+      "longitude": 18.59719
+    },
+    {
+      "name": "Pochodzita",
+      "latitude": 49.54237,
+      "longitude": 18.99549
+    },
+    {
+      "name": "Pniówek",
+      "latitude": 49.96439,
+      "longitude": 18.67639
+    },
+    {
+      "name": "Plebańska",
+      "latitude": 49.66667,
+      "longitude": 19.11667
+    },
+    {
+      "name": "Pławy",
+      "latitude": 50.03421,
+      "longitude": 19.16325
+    },
+    {
+      "name": "Pisarzowice",
+      "latitude": 49.88363,
+      "longitude": 19.14565
+    },
+    {
+      "name": "Piotrowice",
+      "latitude": 49.97681,
+      "longitude": 19.36441
+    },
+    {
+      "name": "Pietrzykowice",
+      "latitude": 49.69634,
+      "longitude": 19.1599
+    },
+    {
+      "name": "Pierściec",
+      "latitude": 49.83339,
+      "longitude": 18.81409
+    },
+    {
+      "name": "Pielgrzymowice",
+      "latitude": 49.90547,
+      "longitude": 18.64886
+    },
+    {
+      "name": "Piasek",
+      "latitude": 50.01055,
+      "longitude": 18.94807
+    },
+    {
+      "name": "Pewel Wielka",
+      "latitude": 49.67457,
+      "longitude": 19.37482
+    },
+    {
+      "name": "Pewel Ślemieńska",
+      "latitude": 49.68968,
+      "longitude": 19.33431
+    },
+    {
+      "name": "Pewel Mała",
+      "latitude": 49.66285,
+      "longitude": 19.27774
+    },
+    {
+      "name": "Pewelka",
+      "latitude": 49.70728,
+      "longitude": 19.42203
+    },
+    {
+      "name": "Petkówka",
+      "latitude": 49.45,
+      "longitude": 19.15
+    },
+    {
+      "name": "Pazurowice",
+      "latitude": 49.99285,
+      "longitude": 18.83938
+    },
+    {
+      "name": "Pawlusów",
+      "latitude": 49.55,
+      "longitude": 19.11667
+    },
+    {
+      "name": "Pawlusie",
+      "latitude": 49.66667,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Pawłowice",
+      "latitude": 49.96127,
+      "longitude": 18.71778
+    },
+    {
+      "name": "Pastwiska",
+      "latitude": 49.76776,
+      "longitude": 18.63523
+    },
+    {
+      "name": "Pasieczki",
+      "latitude": 50.15386,
+      "longitude": 19.20187
+    },
+    {
+      "name": "Paprocka Huta",
+      "latitude": 50.08333,
+      "longitude": 19.0
+    },
+    {
+      "name": "Paprocany",
+      "latitude": 50.09526,
+      "longitude": 18.99416
+    },
+    {
+      "name": "Palczowice",
+      "latitude": 49.99488,
+      "longitude": 19.4585
+    },
+    {
+      "name": "Otrębów",
+      "latitude": 49.83068,
+      "longitude": 18.58521
+    },
+    {
+      "name": "Oświęcim",
+      "latitude": 50.03437,
+      "longitude": 19.21037
+    },
+    {
+      "name": "Osiny",
+      "latitude": 50.01257,
+      "longitude": 18.68756
+    },
+    {
+      "name": "Osiek",
+      "latitude": 49.95067,
+      "longitude": 19.26444
+    },
+    {
+      "name": "Olszyny",
+      "latitude": 50.05312,
+      "longitude": 19.45232
+    },
+    {
+      "name": "Olszyny",
+      "latitude": 49.9,
+      "longitude": 19.28333
+    },
+    {
+      "name": "Olszówka Górna",
+      "latitude": 49.78326,
+      "longitude": 19.03381
+    },
+    {
+      "name": "Olecka",
+      "latitude": 49.6,
+      "longitude": 18.9
+    },
+    {
+      "name": "Okrajnik",
+      "latitude": 49.73728,
+      "longitude": 19.27521
+    },
+    {
+      "name": "Okleśna",
+      "latitude": 50.0309,
+      "longitude": 19.53129
+    },
+    {
+      "name": "Ohłypów",
+      "latitude": 49.58167,
+      "longitude": 19.61901
+    },
+    {
+      "name": "Ogrodzona",
+      "latitude": 49.76791,
+      "longitude": 18.72886
+    },
+    {
+      "name": "Odkrzas",
+      "latitude": 49.55,
+      "longitude": 18.91667
+    },
+    {
+      "name": "Oczków",
+      "latitude": 49.72736,
+      "longitude": 19.23397
+    },
+    {
+      "name": "Ochoce",
+      "latitude": 49.91667,
+      "longitude": 18.96667
+    },
+    {
+      "name": "Ochaby",
+      "latitude": 49.84252,
+      "longitude": 18.76894
+    },
+    {
+      "name": "Nowy Świat",
+      "latitude": 49.73333,
+      "longitude": 19.6
+    },
+    {
+      "name": "Nowe Tychy",
+      "latitude": 50.15,
+      "longitude": 19.0
+    },
+    {
+      "name": "Nowe Dwory",
+      "latitude": 49.95249,
+      "longitude": 19.60622
+    },
+    {
+      "name": "Nowa Wieś",
+      "latitude": 49.91667,
+      "longitude": 19.61667
+    },
+    {
+      "name": "Nowa Wieś",
+      "latitude": 49.90746,
+      "longitude": 19.21646
+    },
+    {
+      "name": "Nowakówka",
+      "latitude": 49.76667,
+      "longitude": 19.7
+    },
+    {
+      "name": "Nieledwia",
+      "latitude": 49.53919,
+      "longitude": 19.06823
+    },
+    {
+      "name": "Nidek",
+      "latitude": 49.90492,
+      "longitude": 19.32461
+    },
+    {
+      "name": "Nideckie Podlesie",
+      "latitude": 49.89109,
+      "longitude": 19.32256
+    },
+    {
+      "name": "Nazieleńce",
+      "latitude": 49.99578,
+      "longitude": 19.13315
+    },
+    {
+      "name": "Na Przegibku",
+      "latitude": 49.41867,
+      "longitude": 19.04718
+    },
+    {
+      "name": "Na Młace",
+      "latitude": 49.65,
+      "longitude": 18.98333
+    },
+    {
+      "name": "Mutne",
+      "latitude": 49.66545,
+      "longitude": 19.31019
+    },
+    {
+      "name": "Mucharz",
+      "latitude": 49.81207,
+      "longitude": 19.54751
+    },
+    {
+      "name": "Mraznica",
+      "latitude": 49.6,
+      "longitude": 18.9
+    },
+    {
+      "name": "Moszczenica",
+      "latitude": 49.94356,
+      "longitude": 18.54683
+    },
+    {
+      "name": "Moszczanica",
+      "latitude": 49.70559,
+      "longitude": 19.23268
+    },
+    {
+      "name": "Mościsko",
+      "latitude": 49.91667,
+      "longitude": 18.95
+    },
+    {
+      "name": "Mościska",
+      "latitude": 50.09894,
+      "longitude": 18.81706
+    },
+    {
+      "name": "Monowice",
+      "latitude": 50.03333,
+      "longitude": 19.3
+    },
+    {
+      "name": "Moczydło",
+      "latitude": 50.08333,
+      "longitude": 19.33333
+    },
+    {
+      "name": "Mnisztowo",
+      "latitude": 49.75,
+      "longitude": 18.68333
+    },
+    {
+      "name": "Mnich",
+      "latitude": 49.88944,
+      "longitude": 18.80722
+    },
+    {
+      "name": "Młyny",
+      "latitude": 50.1,
+      "longitude": 19.25
+    },
+    {
+      "name": "Młada Hora",
+      "latitude": 49.44118,
+      "longitude": 19.08729
+    },
+    {
+      "name": "Mizerów",
+      "latitude": 49.99119,
+      "longitude": 18.7904
+    },
+    {
+      "name": "Milówki",
+      "latitude": 49.55,
+      "longitude": 19.13475
+    },
+    {
+      "name": "Milówka",
+      "latitude": 49.5554,
+      "longitude": 19.09072
+    },
+    {
+      "name": "Mikuszowice",
+      "latitude": 49.78115,
+      "longitude": 19.05287
+    },
+    {
+      "name": "Miejsce",
+      "latitude": 50.01822,
+      "longitude": 19.50949
+    },
+    {
+      "name": "Miedzyświec",
+      "latitude": 49.78415,
+      "longitude": 18.76465
+    },
+    {
+      "name": "Międzyrzecze Górne",
+      "latitude": 49.84405,
+      "longitude": 18.94157
+    },
+    {
+      "name": "Międzyrzecze Dolne",
+      "latitude": 49.85477,
+      "longitude": 18.95378
+    },
+    {
+      "name": "Międzyrzecze",
+      "latitude": 50.02462,
+      "longitude": 19.06506
+    },
+    {
+      "name": "Międzybrodzie Żywieckie",
+      "latitude": 49.76619,
+      "longitude": 19.21217
+    },
+    {
+      "name": "Międzybrodzie Kobiernickie",
+      "latitude": 49.8,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Międzybrodzie Bialskie",
+      "latitude": 49.78747,
+      "longitude": 19.19741
+    },
+    {
+      "name": "Miedźna",
+      "latitude": 49.98225,
+      "longitude": 19.04883
+    },
+    {
+      "name": "Metków Mały",
+      "latitude": 50.05,
+      "longitude": 19.4
+    },
+    {
+      "name": "Mętków",
+      "latitude": 50.05251,
+      "longitude": 19.37525
+    },
+    {
+      "name": "Meszna",
+      "latitude": 49.74567,
+      "longitude": 19.05561
+    },
+    {
+      "name": "Merkowa",
+      "latitude": 49.75,
+      "longitude": 19.5
+    },
+    {
+      "name": "Mazańcowice",
+      "latitude": 49.85802,
+      "longitude": 18.97708
+    },
+    {
+      "name": "Marktowice Górne",
+      "latitude": 49.88335,
+      "longitude": 18.58552
+    },
+    {
+      "name": "Marcyporęba",
+      "latitude": 49.94487,
+      "longitude": 19.61343
+    },
+    {
+      "name": "Marcówka",
+      "latitude": 49.79279,
+      "longitude": 19.61901
+    },
+    {
+      "name": "Malinka",
+      "latitude": 49.65,
+      "longitude": 18.93333
+    },
+    {
+      "name": "Malec",
+      "latitude": 49.92106,
+      "longitude": 19.2453
+    },
+    {
+      "name": "Mała Strona",
+      "latitude": 49.93333,
+      "longitude": 18.71667
+    },
+    {
+      "name": "Maków Podhalański",
+      "latitude": 49.73008,
+      "longitude": 19.67711
+    },
+    {
+      "name": "Makotowiec",
+      "latitude": 50.14589,
+      "longitude": 18.96825
+    },
+    {
+      "name": "Łysina",
+      "latitude": 49.74408,
+      "longitude": 19.29601
+    },
+    {
+      "name": "Łodygowice",
+      "latitude": 49.72992,
+      "longitude": 19.13939
+    },
+    {
+      "name": "Lipowiec",
+      "latitude": 50.08333,
+      "longitude": 19.45
+    },
+    {
+      "name": "Lipowiec",
+      "latitude": 49.88333,
+      "longitude": 19.05
+    },
+    {
+      "name": "Lipowiec",
+      "latitude": 49.74871,
+      "longitude": 18.8255
+    },
+    {
+      "name": "Lipowa",
+      "latitude": 50.00288,
+      "longitude": 19.55326
+    },
+    {
+      "name": "Lipowa",
+      "latitude": 49.67574,
+      "longitude": 19.09398
+    },
+    {
+      "name": "Ligota",
+      "latitude": 49.89856,
+      "longitude": 18.9509
+    },
+    {
+      "name": "Libiąż",
+      "latitude": 50.10396,
+      "longitude": 19.31568
+    },
+    {
+      "name": "Lgota",
+      "latitude": 49.92946,
+      "longitude": 19.55824
+    },
+    {
+      "name": "Leszna Górna",
+      "latitude": 49.69306,
+      "longitude": 18.73006
+    },
+    {
+      "name": "Leśnica",
+      "latitude": 49.83953,
+      "longitude": 19.68819
+    },
+    {
+      "name": "Leśna",
+      "latitude": 49.67041,
+      "longitude": 19.12763
+    },
+    {
+      "name": "Łęskie Zasole",
+      "latitude": 49.96667,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Łęki",
+      "latitude": 49.95023,
+      "longitude": 19.20977
+    },
+    {
+      "name": "Łękawica",
+      "latitude": 49.84488,
+      "longitude": 19.58362
+    },
+    {
+      "name": "Łękawica",
+      "latitude": 49.72209,
+      "longitude": 19.26496
+    },
+    {
+      "name": "Lędziny",
+      "latitude": 50.14264,
+      "longitude": 19.13149
+    },
+    {
+      "name": "Łazy",
+      "latitude": 49.98997,
+      "longitude": 19.26195
+    },
+    {
+      "name": "Łazy",
+      "latitude": 49.92919,
+      "longitude": 19.34483
+    },
+    {
+      "name": "Łazy",
+      "latitude": 49.825,
+      "longitude": 18.89078
+    },
+    {
+      "name": "Łaziska Średnie",
+      "latitude": 50.13333,
+      "longitude": 18.86667
+    },
+    {
+      "name": "Latonka",
+      "latitude": 49.91667,
+      "longitude": 19.31667
+    },
+    {
+      "name": "Laskowa",
+      "latitude": 49.98103,
+      "longitude": 19.46288
+    },
+    {
+      "name": "Lasaki",
+      "latitude": 50.05,
+      "longitude": 18.75
+    },
+    {
+      "name": "Las",
+      "latitude": 50.03925,
+      "longitude": 19.36319
+    },
+    {
+      "name": "Las",
+      "latitude": 49.73896,
+      "longitude": 19.42869
+    },
+    {
+      "name": "Landek",
+      "latitude": 49.88105,
+      "longitude": 18.87838
+    },
+    {
+      "name": "Laliki",
+      "latitude": 49.53446,
+      "longitude": 19.00549
+    },
+    {
+      "name": "Łąka",
+      "latitude": 49.95606,
+      "longitude": 18.90616
+    },
+    {
+      "name": "Łączka",
+      "latitude": 49.77677,
+      "longitude": 18.7365
+    },
+    {
+      "name": "Łączany",
+      "latitude": 49.98407,
+      "longitude": 19.57867
+    },
+    {
+      "name": "Lachowice",
+      "latitude": 49.71555,
+      "longitude": 19.47455
+    },
+    {
+      "name": "Kwaczała",
+      "latitude": 50.06408,
+      "longitude": 19.49215
+    },
+    {
+      "name": "Kurów",
+      "latitude": 49.72165,
+      "longitude": 19.43524
+    },
+    {
+      "name": "Kuków",
+      "latitude": 49.73252,
+      "longitude": 19.48485
+    },
+    {
+      "name": "Krzyżówki",
+      "latitude": 49.58545,
+      "longitude": 19.38074
+    },
+    {
+      "name": "Krzyżówka",
+      "latitude": 50.01667,
+      "longitude": 19.25
+    },
+    {
+      "name": "Krzyżowice",
+      "latitude": 49.98528,
+      "longitude": 18.67281
+    },
+    {
+      "name": "Krzyżowa",
+      "latitude": 49.59235,
+      "longitude": 19.34469
+    },
+    {
+      "name": "Krzywonik",
+      "latitude": 49.7,
+      "longitude": 18.9
+    },
+    {
+      "name": "Krzywa",
+      "latitude": 49.58333,
+      "longitude": 19.06667
+    },
+    {
+      "name": "Krzeszów Dolny",
+      "latitude": 49.74611,
+      "longitude": 19.4664
+    },
+    {
+      "name": "Krzeszów",
+      "latitude": 49.75915,
+      "longitude": 19.48915
+    },
+    {
+      "name": "Kryry",
+      "latitude": 50.01667,
+      "longitude": 18.80568
+    },
+    {
+      "name": "Krupinówka",
+      "latitude": 49.88333,
+      "longitude": 19.6
+    },
+    {
+      "name": "Królówka",
+      "latitude": 50.08095,
+      "longitude": 18.79273
+    },
+    {
+      "name": "Kręcielka",
+      "latitude": 49.55,
+      "longitude": 18.91667
+    },
+    {
+      "name": "Kręcichwosty",
+      "latitude": 49.5,
+      "longitude": 19.15
+    },
+    {
+      "name": "Krasna",
+      "latitude": 49.75507,
+      "longitude": 18.67739
+    },
+    {
+      "name": "Kozy Małe",
+      "latitude": 49.83888,
+      "longitude": 19.13021
+    },
+    {
+      "name": "Kozy Górne",
+      "latitude": 49.83865,
+      "longitude": 19.15466
+    },
+    {
+      "name": "Kozy",
+      "latitude": 49.84756,
+      "longitude": 19.14891
+    },
+    {
+      "name": "Kozubnik",
+      "latitude": 49.80265,
+      "longitude": 19.22264
+    },
+    {
+      "name": "Koźle",
+      "latitude": 49.96667,
+      "longitude": 18.78333
+    },
+    {
+      "name": "Koziniec",
+      "latitude": 49.8299,
+      "longitude": 19.50262
+    },
+    {
+      "name": "Kozakowice Górne",
+      "latitude": 49.74833,
+      "longitude": 18.7813
+    },
+    {
+      "name": "Kozakowice Dolne",
+      "latitude": 49.74478,
+      "longitude": 18.76619
+    },
+    {
+      "name": "Kowale",
+      "latitude": 49.82619,
+      "longitude": 18.84035
+    },
+    {
+      "name": "Kotelniczysko",
+      "latitude": 49.77942,
+      "longitude": 18.85456
+    },
+    {
+      "name": "Koszarawa",
+      "latitude": 49.64462,
+      "longitude": 19.40083
+    },
+    {
+      "name": "Kostkowice",
+      "latitude": 49.79462,
+      "longitude": 18.70131
+    },
+    {
+      "name": "Kosówki",
+      "latitude": 50.11103,
+      "longitude": 19.27948
+    },
+    {
+      "name": "Kossowa",
+      "latitude": 49.96585,
+      "longitude": 19.60038
+    },
+    {
+      "name": "Korbielów",
+      "latitude": 49.5682,
+      "longitude": 19.35001
+    },
+    {
+      "name": "Kopytówka",
+      "latitude": 49.93625,
+      "longitude": 19.6354
+    },
+    {
+      "name": "Kopciowice",
+      "latitude": 50.08909,
+      "longitude": 19.20256
+    },
+    {
+      "name": "Kopaniny",
+      "latitude": 50.12292,
+      "longitude": 19.0495
+    },
+    {
+      "name": "Kopaniny",
+      "latitude": 50.06667,
+      "longitude": 18.83333
+    },
+    {
+      "name": "Kopanina",
+      "latitude": 50.13056,
+      "longitude": 18.82937
+    },
+    {
+      "name": "Kopań",
+      "latitude": 50.06292,
+      "longitude": 19.14825
+    },
+    {
+      "name": "Konradowo",
+      "latitude": 49.98155,
+      "longitude": 18.77609
+    },
+    {
+      "name": "Koniaków",
+      "latitude": 49.55066,
+      "longitude": 18.9491
+    },
+    {
+      "name": "Kończyce Wielkie",
+      "latitude": 49.8351,
+      "longitude": 18.64474
+    },
+    {
+      "name": "Kończyce Małe",
+      "latitude": 49.85824,
+      "longitude": 18.62964
+    },
+    {
+      "name": "Komorowice Śląskie",
+      "latitude": 49.84938,
+      "longitude": 19.02662
+    },
+    {
+      "name": "Komorowice",
+      "latitude": 49.86463,
+      "longitude": 19.03425
+    },
+    {
+      "name": "Kolonia Golasowice",
+      "latitude": 49.93978,
+      "longitude": 18.70238
+    },
+    {
+      "name": "Kolonia Bieruń Stary",
+      "latitude": 50.06999,
+      "longitude": 19.1129
+    },
+    {
+      "name": "Kolonia",
+      "latitude": 49.61667,
+      "longitude": 19.3
+    },
+    {
+      "name": "Kolonia",
+      "latitude": 49.43333,
+      "longitude": 19.03333
+    },
+    {
+      "name": "Kocurów",
+      "latitude": 49.7,
+      "longitude": 19.25
+    },
+    {
+      "name": "Kocoń",
+      "latitude": 49.72442,
+      "longitude": 19.39699
+    },
+    {
+      "name": "Kocierz Rychwałdzki",
+      "latitude": 49.76247,
+      "longitude": 19.32701
+    },
+    {
+      "name": "Kocierz Moszczanicki",
+      "latitude": 49.7531,
+      "longitude": 19.26504
+    },
+    {
+      "name": "Kobiór",
+      "latitude": 50.06089,
+      "longitude": 18.93468
+    },
+    {
+      "name": "Kobiernice",
+      "latitude": 49.85497,
+      "longitude": 19.21646
+    },
+    {
+      "name": "Kobielice",
+      "latitude": 50.01171,
+      "longitude": 18.85906
+    },
+    {
+      "name": "Knaj",
+      "latitude": 49.8752,
+      "longitude": 18.72986
+    },
+    {
+      "name": "Klucznikowice",
+      "latitude": 50.05,
+      "longitude": 19.23333
+    },
+    {
+      "name": "Kleszczówka",
+      "latitude": 50.05278,
+      "longitude": 18.7123
+    },
+    {
+      "name": "Kleszczów",
+      "latitude": 50.03889,
+      "longitude": 18.73505
+    },
+    {
+      "name": "Klecza Górna",
+      "latitude": 49.86444,
+      "longitude": 19.55652
+    },
+    {
+      "name": "Klecza Dolna",
+      "latitude": 49.88291,
+      "longitude": 19.53764
+    },
+    {
+      "name": "Kisielów",
+      "latitude": 49.77118,
+      "longitude": 18.75589
+    },
+    {
+      "name": "Kielbasó",
+      "latitude": 49.46667,
+      "longitude": 19.13333
+    },
+    {
+      "name": "Kiczyce",
+      "latitude": 49.82486,
+      "longitude": 18.80259
+    },
+    {
+      "name": "Kęty",
+      "latitude": 49.88214,
+      "longitude": 19.22333
+    },
+    {
+      "name": "Kępkowa",
+      "latitude": 49.7,
+      "longitude": 18.91667
+    },
+    {
+      "name": "Kępki",
+      "latitude": 50.00138,
+      "longitude": 19.5267
+    },
+    {
+      "name": "Kąty",
+      "latitude": 49.97637,
+      "longitude": 18.60929
+    },
+    {
+      "name": "Kąty",
+      "latitude": 49.88333,
+      "longitude": 19.06667
+    },
+    {
+      "name": "Katarzynka",
+      "latitude": 49.61667,
+      "longitude": 18.86667
+    },
+    {
+      "name": "Kasperki",
+      "latitude": 49.54595,
+      "longitude": 19.03171
+    },
+    {
+      "name": "Karczmarzyki",
+      "latitude": 49.66667,
+      "longitude": 19.68333
+    },
+    {
+      "name": "Kaniów Dankowski",
+      "latitude": 49.95038,
+      "longitude": 19.0905
+    },
+    {
+      "name": "Kaniów",
+      "latitude": 49.94316,
+      "longitude": 19.05098
+    },
+    {
+      "name": "Kamionka",
+      "latitude": 50.08333,
+      "longitude": 19.46667
+    },
+    {
+      "name": "Kamienna",
+      "latitude": 49.58333,
+      "longitude": 19.35
+    },
+    {
+      "name": "Kamień",
+      "latitude": 49.95,
+      "longitude": 19.51667
+    },
+    {
+      "name": "Kamesznica",
+      "latitude": 49.56469,
+      "longitude": 19.0212
+    },
+    {
+      "name": "Kalwaria Zebrzydowska",
+      "latitude": 49.86759,
+      "longitude": 19.6772
+    },
+    {
+      "name": "Kalna",
+      "latitude": 49.70855,
+      "longitude": 19.10411
+    },
+    {
+      "name": "Kaczyna",
+      "latitude": 49.82813,
+      "longitude": 19.42366
+    },
+    {
+      "name": "Kaczyce",
+      "latitude": 49.82752,
+      "longitude": 18.59161
+    },
+    {
+      "name": "Juszczyna",
+      "latitude": 49.62984,
+      "longitude": 19.22032
+    },
+    {
+      "name": "Juszczyn",
+      "latitude": 49.6929,
+      "longitude": 19.69128
+    },
+    {
+      "name": "Jurzyków",
+      "latitude": 49.63001,
+      "longitude": 18.83935
+    },
+    {
+      "name": "Juroszków",
+      "latitude": 49.6,
+      "longitude": 19.16667
+    },
+    {
+      "name": "Jeżowski Dział",
+      "latitude": 49.71667,
+      "longitude": 19.43333
+    },
+    {
+      "name": "Jeleśnia",
+      "latitude": 49.64246,
+      "longitude": 19.32701
+    },
+    {
+      "name": "Jedlina",
+      "latitude": 50.04794,
+      "longitude": 19.14419
+    },
+    {
+      "name": "Jazd-Imielin",
+      "latitude": 50.15304,
+      "longitude": 19.22745
+    },
+    {
+      "name": "Jaworzynka",
+      "latitude": 49.54019,
+      "longitude": 18.86996
+    },
+    {
+      "name": "Jaworze",
+      "latitude": 49.79351,
+      "longitude": 18.9479
+    },
+    {
+      "name": "Jawornik",
+      "latitude": 49.66075,
+      "longitude": 18.83372
+    },
+    {
+      "name": "Jaworek",
+      "latitude": 50.10178,
+      "longitude": 19.35122
+    },
+    {
+      "name": "Jawiszowice",
+      "latitude": 49.96072,
+      "longitude": 19.13853
+    },
+    {
+      "name": "Jaszowiec",
+      "latitude": 49.7,
+      "longitude": 18.81667
+    },
+    {
+      "name": "Jaszczurowa",
+      "latitude": 49.79578,
+      "longitude": 19.50914
+    },
+    {
+      "name": "Jastrzębie Zdrój",
+      "latitude": 49.95542,
+      "longitude": 18.57479
+    },
+    {
+      "name": "Jastrzębie Górne",
+      "latitude": 49.95794,
+      "longitude": 18.60773
+    },
+    {
+      "name": "Jastrzębie Dolne",
+      "latitude": 49.95,
+      "longitude": 18.58333
+    },
+    {
+      "name": "Jasionki",
+      "latitude": 49.78333,
+      "longitude": 18.91667
+    },
+    {
+      "name": "Jasienica",
+      "latitude": 49.81312,
+      "longitude": 18.92155
+    },
+    {
+      "name": "Jarząbkowice",
+      "latitude": 49.90467,
+      "longitude": 18.71747
+    },
+    {
+      "name": "Jaroszowice",
+      "latitude": 50.11393,
+      "longitude": 19.06437
+    },
+    {
+      "name": "Jaroszowice",
+      "latitude": 49.86267,
+      "longitude": 19.51962
+    },
+    {
+      "name": "Dankowice",
+      "latitude": 49.91667,
+      "longitude": 19.1
+    },
+    {
+      "name": "Janowice",
+      "latitude": 49.88496,
+      "longitude": 19.09376
+    },
+    {
+      "name": "Jankowice",
+      "latitude": 50.04419,
+      "longitude": 19.44202
+    },
+    {
+      "name": "Jankowice",
+      "latitude": 50.0009,
+      "longitude": 18.98901
+    },
+    {
+      "name": "Jamnice",
+      "latitude": 50.13822,
+      "longitude": 19.20239
+    },
+    {
+      "name": "Jałowiec",
+      "latitude": 49.67156,
+      "longitude": 19.455
+    },
+    {
+      "name": "Jagódki",
+      "latitude": 49.8,
+      "longitude": 19.41667
+    },
+    {
+      "name": "Jachówka",
+      "latitude": 49.75831,
+      "longitude": 19.69471
+    },
+    {
+      "name": "Istebna",
+      "latitude": 49.56319,
+      "longitude": 18.90567
+    },
+    {
+      "name": "Iskrzyczyn",
+      "latitude": 49.79606,
+      "longitude": 18.74396
+    },
+    {
+      "name": "Inwałd",
+      "latitude": 49.86355,
+      "longitude": 19.39276
+    },
+    {
+      "name": "Imielin",
+      "latitude": 50.14534,
+      "longitude": 19.18599
+    },
+    {
+      "name": "Iłownica",
+      "latitude": 49.85268,
+      "longitude": 18.86429
+    },
+    {
+      "name": "Hucisko",
+      "latitude": 49.75111,
+      "longitude": 19.12188
+    },
+    {
+      "name": "Hucisko",
+      "latitude": 49.69184,
+      "longitude": 19.39739
+    },
+    {
+      "name": "Hołdunów",
+      "latitude": 50.14475,
+      "longitude": 19.14396
+    },
+    {
+      "name": "Hermanice",
+      "latitude": 49.74157,
+      "longitude": 18.80259
+    },
+    {
+      "name": "Hecznarowice",
+      "latitude": 49.9,
+      "longitude": 19.16667
+    },
+    {
+      "name": "Hażlach",
+      "latitude": 49.80714,
+      "longitude": 18.65178
+    },
+    {
+      "name": "Harmęże",
+      "latitude": 50.02114,
+      "longitude": 19.16222
+    },
+    {
+      "name": "Harmatów",
+      "latitude": 49.48333,
+      "longitude": 19.06667
+    },
+    {
+      "name": "Harensowie",
+      "latitude": 49.46667,
+      "longitude": 19.01667
+    },
+    {
+      "name": "Harbutowice",
+      "latitude": 49.77944,
+      "longitude": 18.80808
+    },
+    {
+      "name": "Hałcnów",
+      "latitude": 49.85,
+      "longitude": 19.1
+    },
+    {
+      "name": "Gumółki",
+      "latitude": 49.49263,
+      "longitude": 18.97044
+    },
+    {
+      "name": "Gumna",
+      "latitude": 49.77439,
+      "longitude": 18.69178
+    },
+    {
+      "name": "Grzechynia Górna",
+      "latitude": 49.71667,
+      "longitude": 19.63333
+    },
+    {
+      "name": "Grzechynia",
+      "latitude": 49.7136,
+      "longitude": 19.64561
+    },
+    {
+      "name": "Grzebiace",
+      "latitude": 50.03333,
+      "longitude": 19.43333
+    },
+    {
+      "name": "Grzawa",
+      "latitude": 49.96425,
+      "longitude": 19.05692
+    },
+    {
+      "name": "Gromiec",
+      "latitude": 50.05926,
+      "longitude": 19.29524
+    },
+    {
+      "name": "Grojec",
+      "latitude": 49.98147,
+      "longitude": 19.23792
+    },
+    {
+      "name": "Grodzisko",
+      "latitude": 49.96563,
+      "longitude": 19.45996
+    },
+    {
+      "name": "Grodziec",
+      "latitude": 49.80307,
+      "longitude": 18.86866
+    },
+    {
+      "name": "Granice Głębowskie",
+      "latitude": 49.96667,
+      "longitude": 19.35
+    },
+    {
+      "name": "Granica Porębska",
+      "latitude": 49.98333,
+      "longitude": 19.3
+    },
+    {
+      "name": "Granica",
+      "latitude": 49.98333,
+      "longitude": 19.41667
+    },
+    {
+      "name": "Granica",
+      "latitude": 49.95,
+      "longitude": 18.55
+    },
+    {
+      "name": "Graboszyce",
+      "latitude": 49.94548,
+      "longitude": 19.44923
+    },
+    {
+      "name": "Gostyń",
+      "latitude": 50.10528,
+      "longitude": 18.88241
+    },
+    {
+      "name": "Gorzów",
+      "latitude": 50.07831,
+      "longitude": 19.22532
+    },
+    {
+      "name": "Gorzeń Górny",
+      "latitude": 49.8568,
+      "longitude": 19.49799
+    },
+    {
+      "name": "Gorzeń Dolny",
+      "latitude": 49.86986,
+      "longitude": 19.47927
+    },
+    {
+      "name": "Góry Kęckie",
+      "latitude": 49.9,
+      "longitude": 19.25
+    },
+    {
+      "name": "Górny Bór",
+      "latitude": 49.8,
+      "longitude": 18.8
+    },
+    {
+      "name": "Górki Wielkie",
+      "latitude": 49.77971,
+      "longitude": 18.83117
+    },
+    {
+      "name": "Górki Małe",
+      "latitude": 49.76536,
+      "longitude": 18.85717
+    },
+    {
+      "name": "Górki",
+      "latitude": 50.10268,
+      "longitude": 19.13717
+    },
+    {
+      "name": "Górki",
+      "latitude": 49.98333,
+      "longitude": 19.48333
+    },
+    {
+      "name": "Góra",
+      "latitude": 49.97971,
+      "longitude": 19.10471
+    },
+    {
+      "name": "Gołysz",
+      "latitude": 49.91667,
+      "longitude": 18.88333
+    },
+    {
+      "name": "Goluszonka",
+      "latitude": 49.56667,
+      "longitude": 19.0
+    },
+    {
+      "name": "Goluski",
+      "latitude": 49.5874,
+      "longitude": 19.09508
+    },
+    {
+      "name": "Gołoszka",
+      "latitude": 49.74833,
+      "longitude": 19.53867
+    },
+    {
+      "name": "Gołkowice",
+      "latitude": 49.91418,
+      "longitude": 18.51419
+    },
+    {
+      "name": "Goleszów",
+      "latitude": 49.7358,
+      "longitude": 18.73675
+    },
+    {
+      "name": "Gołębiówka",
+      "latitude": 49.85,
+      "longitude": 19.55
+    },
+    {
+      "name": "Goławiec",
+      "latitude": 50.10838,
+      "longitude": 19.15917
+    },
+    {
+      "name": "Golasowice",
+      "latitude": 49.92515,
+      "longitude": 18.69392
+    },
+    {
+      "name": "Gogołowa",
+      "latitude": 49.98666,
+      "longitude": 18.59041
+    },
+    {
+      "name": "Godziszów",
+      "latitude": 49.7612,
+      "longitude": 18.75727
+    },
+    {
+      "name": "Godziszka",
+      "latitude": 49.71288,
+      "longitude": 19.07587
+    },
+    {
+      "name": "Goczałkowice Zdrój",
+      "latitude": 49.94454,
+      "longitude": 18.96927
+    },
+    {
+      "name": "Goczałkowice Dolne",
+      "latitude": 49.94435,
+      "longitude": 18.95448
+    },
+    {
+      "name": "Głuchaczki",
+      "latitude": 49.60253,
+      "longitude": 19.42014
+    },
+    {
+      "name": "Glowaczowa",
+      "latitude": 49.73635,
+      "longitude": 19.12531
+    },
+    {
+      "name": "Glinka",
+      "latitude": 50.12566,
+      "longitude": 18.96852
+    },
+    {
+      "name": "Glinka",
+      "latitude": 49.46255,
+      "longitude": 19.16239
+    },
+    {
+      "name": "Glemieniec",
+      "latitude": 49.72115,
+      "longitude": 19.16067
+    },
+    {
+      "name": "Głębowice",
+      "latitude": 49.94373,
+      "longitude": 19.33434
+    },
+    {
+      "name": "Gilowice",
+      "latitude": 49.99505,
+      "longitude": 19.09613
+    },
+    {
+      "name": "Gilowice",
+      "latitude": 49.71277,
+      "longitude": 19.31045
+    },
+    {
+      "name": "Gierałtowiczki",
+      "latitude": 49.94122,
+      "longitude": 19.38344
+    },
+    {
+      "name": "Gierałtowice",
+      "latitude": 49.94426,
+      "longitude": 19.3907
+    },
+    {
+      "name": "Cielmice",
+      "latitude": 50.08826,
+      "longitude": 19.01896
+    },
+    {
+      "name": "Gibaszów",
+      "latitude": 49.75,
+      "longitude": 19.38333
+    },
+    {
+      "name": "Garca",
+      "latitude": 49.95,
+      "longitude": 19.46667
+    },
+    {
+      "name": "Fujowka",
+      "latitude": 49.76667,
+      "longitude": 19.6
+    },
+    {
+      "name": "Frydrychowice",
+      "latitude": 49.90481,
+      "longitude": 19.41936
+    },
+    {
+      "name": "Frydek",
+      "latitude": 49.99626,
+      "longitude": 19.07278
+    },
+    {
+      "name": "Frelichów",
+      "latitude": 49.90923,
+      "longitude": 18.81186
+    },
+    {
+      "name": "Folwarki",
+      "latitude": 50.05529,
+      "longitude": 18.66824
+    },
+    {
+      "name": "Flaki",
+      "latitude": 49.85,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Dzięgielów",
+      "latitude": 49.72259,
+      "longitude": 18.70491
+    },
+    {
+      "name": "Dziedowizna",
+      "latitude": 49.93458,
+      "longitude": 19.09155
+    },
+    {
+      "name": "Duraje",
+      "latitude": 49.61667,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Drogomyśl",
+      "latitude": 49.86964,
+      "longitude": 18.75727
+    },
+    {
+      "name": "Draboż",
+      "latitude": 49.92117,
+      "longitude": 19.66385
+    },
+    {
+      "name": "Dolny Bór",
+      "latitude": 49.80963,
+      "longitude": 18.80933
+    },
+    {
+      "name": "Dejówka",
+      "latitude": 49.7,
+      "longitude": 19.61667
+    },
+    {
+      "name": "Dębowiec",
+      "latitude": 49.81406,
+      "longitude": 18.72062
+    },
+    {
+      "name": "Dębina",
+      "latitude": 49.96865,
+      "longitude": 18.62614
+    },
+    {
+      "name": "Dębina",
+      "latitude": 49.95638,
+      "longitude": 19.03121
+    },
+    {
+      "name": "Dębina",
+      "latitude": 49.91667,
+      "longitude": 19.1
+    },
+    {
+      "name": "Dankowice",
+      "latitude": 49.93296,
+      "longitude": 19.10279
+    },
+    {
+      "name": "Dąbrówka",
+      "latitude": 49.81094,
+      "longitude": 19.59897
+    },
+    {
+      "name": "Dąb",
+      "latitude": 50.13333,
+      "longitude": 19.25
+    },
+    {
+      "name": "Czułow-Papiernia",
+      "latitude": 50.15838,
+      "longitude": 19.01392
+    },
+    {
+      "name": "Czułów",
+      "latitude": 50.14036,
+      "longitude": 18.99192
+    },
+    {
+      "name": "Czulaw",
+      "latitude": 49.78333,
+      "longitude": 19.16667
+    },
+    {
+      "name": "Czernichów",
+      "latitude": 49.75443,
+      "longitude": 19.20947
+    },
+    {
+      "name": "Czerna",
+      "latitude": 49.9,
+      "longitude": 19.61667
+    },
+    {
+      "name": "Czechowice-Dziedzice",
+      "latitude": 49.91342,
+      "longitude": 19.00479
+    },
+    {
+      "name": "Czatoza",
+      "latitude": 49.61667,
+      "longitude": 19.5
+    },
+    {
+      "name": "Czarnuchowice",
+      "latitude": 50.07042,
+      "longitude": 19.21404
+    },
+    {
+      "name": "Czarne",
+      "latitude": 49.61667,
+      "longitude": 18.95
+    },
+    {
+      "name": "Czarków",
+      "latitude": 50.01833,
+      "longitude": 18.90678
+    },
+    {
+      "name": "Czaniec",
+      "latitude": 49.85071,
+      "longitude": 19.25354
+    },
+    {
+      "name": "Cyrla",
+      "latitude": 49.65,
+      "longitude": 18.98333
+    },
+    {
+      "name": "Cisownica",
+      "latitude": 49.72276,
+      "longitude": 18.76207
+    },
+    {
+      "name": "Cisówka",
+      "latitude": 49.90536,
+      "longitude": 18.59653
+    },
+    {
+      "name": "Cisiec",
+      "latitude": 49.59213,
+      "longitude": 19.1054
+    },
+    {
+      "name": "Cieszyn",
+      "latitude": 49.75133,
+      "longitude": 18.63213
+    },
+    {
+      "name": "Cięcina",
+      "latitude": 49.6022,
+      "longitude": 19.14102
+    },
+    {
+      "name": "Ciapków",
+      "latitude": 49.5,
+      "longitude": 19.18333
+    },
+    {
+      "name": "Chybie",
+      "latitude": 49.90249,
+      "longitude": 18.82756
+    },
+    {
+      "name": "Chrząstowice",
+      "latitude": 49.98333,
+      "longitude": 18.61667
+    },
+    {
+      "name": "Chocznia",
+      "latitude": 49.87417,
+      "longitude": 19.45438
+    },
+    {
+      "name": "Chełm Śląski",
+      "latitude": 50.10825,
+      "longitude": 19.19552
+    },
+    {
+      "name": "Chełm Mały",
+      "latitude": 50.10307,
+      "longitude": 19.22195
+    },
+    {
+      "name": "Chełmek",
+      "latitude": 50.10163,
+      "longitude": 19.24801
+    },
+    {
+      "name": "Chaty Zgońskie",
+      "latitude": 50.08333,
+      "longitude": 18.85
+    },
+    {
+      "name": "Chałupki",
+      "latitude": 50.0,
+      "longitude": 19.56667
+    },
+    {
+      "name": "Bzie Górne",
+      "latitude": 49.94694,
+      "longitude": 18.65973
+    },
+    {
+      "name": "Bzie Dolne",
+      "latitude": 49.9252,
+      "longitude": 18.63552
+    },
+    {
+      "name": "Bystry",
+      "latitude": 49.57548,
+      "longitude": 18.82908
+    },
+    {
+      "name": "Bystra",
+      "latitude": 49.76042,
+      "longitude": 19.05973
+    },
+    {
+      "name": "Bystra",
+      "latitude": 49.63423,
+      "longitude": 19.45001
+    },
+    {
+      "name": "Bystra",
+      "latitude": 49.62028,
+      "longitude": 19.18788
+    },
+    {
+      "name": "Butowice",
+      "latitude": 49.86667,
+      "longitude": 19.28333
+    },
+    {
+      "name": "Burzej",
+      "latitude": 49.8995,
+      "longitude": 18.95864
+    },
+    {
+      "name": "Bulowice",
+      "latitude": 49.8765,
+      "longitude": 19.28873
+    },
+    {
+      "name": "Bukowiec",
+      "latitude": 49.83023,
+      "longitude": 19.2326
+    },
+    {
+      "name": "Bujaków",
+      "latitude": 49.85182,
+      "longitude": 19.19432
+    },
+    {
+      "name": "Bugaj",
+      "latitude": 49.85298,
+      "longitude": 19.6693
+    },
+    {
+      "name": "Budzowy",
+      "latitude": 50.08493,
+      "longitude": 19.293
+    },
+    {
+      "name": "Budzów",
+      "latitude": 49.77622,
+      "longitude": 19.67274
+    },
+    {
+      "name": "Buczkowice",
+      "latitude": 49.72858,
+      "longitude": 19.06908
+    },
+    {
+      "name": "Brzuśnik",
+      "latitude": 49.6242,
+      "longitude": 19.172
+    },
+    {
+      "name": "Brzezówka",
+      "latitude": 49.8132,
+      "longitude": 18.62321
+    },
+    {
+      "name": "Brzeźnica",
+      "latitude": 49.96497,
+      "longitude": 19.61952
+    },
+    {
+      "name": "Brzezinka",
+      "latitude": 50.04237,
+      "longitude": 19.1902
+    },
+    {
+      "name": "Brzezinka",
+      "latitude": 49.83798,
+      "longitude": 19.30624
+    },
+    {
+      "name": "Brzeźce",
+      "latitude": 49.98224,
+      "longitude": 18.8385
+    },
+    {
+      "name": "Brzeszcze",
+      "latitude": 49.98203,
+      "longitude": 19.15157
+    },
+    {
+      "name": "Brozisko",
+      "latitude": 49.88333,
+      "longitude": 19.03333
+    },
+    {
+      "name": "Bronów",
+      "latitude": 49.87782,
+      "longitude": 18.92103
+    },
+    {
+      "name": "Brenna",
+      "latitude": 49.72576,
+      "longitude": 18.90249
+    },
+    {
+      "name": "Branica",
+      "latitude": 50.02599,
+      "longitude": 18.83085
+    },
+    {
+      "name": "Bory",
+      "latitude": 49.99124,
+      "longitude": 19.43687
+    },
+    {
+      "name": "Borowiec",
+      "latitude": 50.11767,
+      "longitude": 19.39022
+    },
+    {
+      "name": "Bór Łodygowski",
+      "latitude": 49.75,
+      "longitude": 19.08333
+    },
+    {
+      "name": "Borki",
+      "latitude": 49.99068,
+      "longitude": 18.76224
+    },
+    {
+      "name": "Bór",
+      "latitude": 50.00375,
+      "longitude": 19.16763
+    },
+    {
+      "name": "Bór",
+      "latitude": 49.93333,
+      "longitude": 18.96667
+    },
+    {
+      "name": "Bojszowy Nowe",
+      "latitude": 50.05284,
+      "longitude": 19.05012
+    },
+    {
+      "name": "Bojszowy Górne",
+      "latitude": 50.06192,
+      "longitude": 19.083
+    },
+    {
+      "name": "Bojszowy Dolne",
+      "latitude": 50.05525,
+      "longitude": 19.10938
+    },
+    {
+      "name": "Bojszowy",
+      "latitude": 50.0578,
+      "longitude": 19.10145
+    },
+    {
+      "name": "Boguszowice",
+      "latitude": 49.76796,
+      "longitude": 18.61658
+    },
+    {
+      "name": "Bodzów",
+      "latitude": 49.99221,
+      "longitude": 19.02683
+    },
+    {
+      "name": "Bobrek",
+      "latitude": 50.05953,
+      "longitude": 19.25263
+    },
+    {
+      "name": "Bobrek",
+      "latitude": 49.76488,
+      "longitude": 18.65992
+    },
+    {
+      "name": "Błędów",
+      "latitude": 50.11492,
+      "longitude": 19.16942
+    },
+    {
+      "name": "Błądzonka",
+      "latitude": 49.75016,
+      "longitude": 19.58013
+    },
+    {
+      "name": "Bładnice Dolne",
+      "latitude": 49.77639,
+      "longitude": 18.78834
+    },
+    {
+      "name": "Bijasowice",
+      "latitude": 50.07092,
+      "longitude": 19.16504
+    },
+    {
+      "name": "Biery",
+      "latitude": 49.79326,
+      "longitude": 18.90636
+    },
+    {
+      "name": "Bieruń",
+      "latitude": 50.09,
+      "longitude": 19.09291
+    },
+    {
+      "name": "Bieruńsko",
+      "latitude": 49.98333,
+      "longitude": 18.96667
+    },
+    {
+      "name": "Bieruń Nowy",
+      "latitude": 50.07304,
+      "longitude": 19.1819
+    },
+    {
+      "name": "Bierna",
+      "latitude": 49.72792,
+      "longitude": 19.17046
+    },
+    {
+      "name": "Bienkówka",
+      "latitude": 49.88333,
+      "longitude": 19.61667
+    },
+    {
+      "name": "Bielsko-Biala",
+      "latitude": 49.82245,
+      "longitude": 19.04686
+    },
+    {
+      "name": "Bielowicko",
+      "latitude": 49.81757,
+      "longitude": 18.85735
+    },
+    {
+      "name": "Bielany",
+      "latitude": 49.93807,
+      "longitude": 19.20273
+    },
+    {
+      "name": "Białka",
+      "latitude": 49.69306,
+      "longitude": 19.67033
+    },
+    {
+      "name": "Bestwinka",
+      "latitude": 49.93272,
+      "longitude": 19.06694
+    },
+    {
+      "name": "Bestwina",
+      "latitude": 49.89712,
+      "longitude": 19.05776
+    },
+    {
+      "name": "Bednarze",
+      "latitude": 49.57043,
+      "longitude": 19.16994
+    },
+    {
+      "name": "Bażanowice",
+      "latitude": 49.73791,
+      "longitude": 18.70345
+    },
+    {
+      "name": "Barwałd",
+      "latitude": 49.86282,
+      "longitude": 19.57934
+    },
+    {
+      "name": "Baranowice",
+      "latitude": 50.02063,
+      "longitude": 18.71151
+    },
+    {
+      "name": "Bąków",
+      "latitude": 49.89342,
+      "longitude": 18.71495
+    },
+    {
+      "name": "Bajerowka",
+      "latitude": 50.03333,
+      "longitude": 18.68333
+    },
+    {
+      "name": "Bachowice",
+      "latitude": 49.95812,
+      "longitude": 19.49369
+    },
+    {
+      "name": "Bachorowice",
+      "latitude": 49.93636,
+      "longitude": 19.5821
+    },
+    {
+      "name": "Babice",
+      "latitude": 50.06882,
+      "longitude": 19.44906
+    },
+    {
+      "name": "Babice",
+      "latitude": 50.05565,
+      "longitude": 19.19955
+    },
+    {
+      "name": "Babica",
+      "latitude": 49.90658,
+      "longitude": 19.5476
+    },
+    {
+      "name": "Andziełówka",
+      "latitude": 49.57577,
+      "longitude": 18.90057
+    },
+    {
+      "name": "Andrychów",
+      "latitude": 49.85497,
+      "longitude": 19.33834
+    },
+    {
+      "name": "Adamkowa Rola",
+      "latitude": 49.76667,
+      "longitude": 19.63333
+    },
+    {
+      "name": "Perlowka -",
+      "latitude": 49.75822,
+      "longitude": 19.25326
+    },
+    {
+      "name": "Bykowska -",
+      "latitude": 49.75591,
+      "longitude": 19.25597
+    },
+    {
+      "name": "Wielka Puszcza",
+      "latitude": 49.79517,
+      "longitude": 19.29397
+    },
+    {
+      "name": "Gładkie",
+      "latitude": 49.78333,
+      "longitude": 19.31667
+    },
+    {
+      "name": "Dolny Rec",
+      "latitude": 49.78333,
+      "longitude": 19.51667
+    },
+    {
+      "name": "Pogórze",
+      "latitude": 49.79961,
+      "longitude": 18.84327
+    },
+    {
+      "name": "Zarzecze",
+      "latitude": 49.91389,
+      "longitude": 18.83444
+    },
+    {
+      "name": "Wilamowice",
+      "latitude": 49.79083,
+      "longitude": 18.76194
+    },
+    {
+      "name": "Przybędza",
+      "latitude": 49.63106,
+      "longitude": 19.12548
+    },
+    {
+      "name": "Lipnik Górny",
+      "latitude": 49.82569,
+      "longitude": 19.08849
+    },
+    {
+      "name": "Wełcza",
+      "latitude": 49.65307,
+      "longitude": 19.51567
+    },
+    {
+      "name": "Przysłop",
+      "latitude": 49.6924,
+      "longitude": 19.5724
+    },
+    {
+      "name": "Mączne",
+      "latitude": 49.72881,
+      "longitude": 19.45679
+    },
+    {
+      "name": "Kiczora",
+      "latitude": 49.51351,
+      "longitude": 19.0484
+    },
+    {
+      "name": "Cicha",
+      "latitude": 49.44888,
+      "longitude": 19.14436
+    },
+    {
+      "name": "Okrągłe",
+      "latitude": 49.49506,
+      "longitude": 19.19766
+    },
+    {
+      "name": "Bieńkowice",
+      "latitude": 49.88534,
+      "longitude": 19.64304
+    },
+    {
+      "name": "Zlote Lany",
+      "latitude": 49.81426,
+      "longitude": 19.07172
+    },
+    {
+      "name": "Bugaj Zakrzowski",
+      "latitude": 49.8488,
+      "longitude": 19.65767
+    },
+    {
+      "name": "Twardorzeczka",
+      "latitude": 49.65557,
+      "longitude": 19.09351
+    },
+    {
+      "name": "Ochaby Małe",
+      "latitude": 49.84072,
+      "longitude": 18.75315
+    },
+    {
+      "name": "Ochaby Wielkie",
+      "latitude": 49.85199,
+      "longitude": 18.75838
+    },
+    {
+      "name": "Kiczory",
+      "latitude": 49.53045,
+      "longitude": 19.59111
+    },
+    {
+      "name": "Broszkowice",
+      "latitude": 50.05824,
+      "longitude": 19.23182
+    },
+    {
+      "name": "Łowiczki",
+      "latitude": 49.97212,
+      "longitude": 19.41327
+    },
+    {
+      "name": "Wyźrał",
+      "latitude": 49.94575,
+      "longitude": 19.56648
+    },
+    {
+      "name": "Budy",
+      "latitude": 50.00157,
+      "longitude": 19.17511
+    }
+  ]
+}

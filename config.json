@@ -48,7 +48,6 @@
   ],
   "bootstrap_without_alerts": true,
   "request_timeout_seconds": 35,
-  "delay_between_searches_seconds": 1.5,
   "poll_interval_seconds": 90,
   "max_remembered_ids": 12000
 }

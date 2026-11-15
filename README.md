@@ -4,6 +4,12 @@ Monitor korzysta z publicznego generatora OLX RSS pod adresem https://tedeelock.
 
 To niezależny, zewnętrzny serwis. Nie ma potwierdzonej gwarancji dostępności, kompletności ani świeżości danych. Sprawdzanie co 5 minut nie gwarantuje, że samo źródło odświeża dane w tym rytmie. Pierwszy przebieg ustala historię bez alertów; późniejsze wysyłają nowo wykryte ID. Wyniki mogą obejmować promowane oferty. Dane są ograniczone do ofert udostępnionych przez kanał.
 
+## Szybkość i ograniczenia źródła
+
+GitHub Actions uruchamia monitoring co 5 minut — to najkrótszy obsługiwany interwał harmonogramu, a start może się opóźnić. W trybie ciągłym na stale działającym komputerze/VPS bot sprawdza co 90 sekund (`python bot.py --loop`). Oba tryby korzystają z publicznego kanału RSS, więc jego opóźnienie może być większe niż interwał sprawdzania. Sprawdzenia wyszukiwań odbywają się równolegle, aby skrócić pojedynczy przebieg.
+
+Nieaktywne oferty spoza publicznych wyników nie są dostępne w tym RSS. MoneyAlert opisuje, że korzysta z danych spoza wyników wyszukiwania, ale nie publikuje sposobu ich pozyskiwania; nie da się tego odtworzyć z publicznego kanału. Bot nie próbuje odczytywać niepublicznych danych ani omijać zabezpieczeń OLX.
+
 ## Stan wdrożenia
 
 W historii jest wcześniejszy przebieg z HTTP 403, ale nowszy skan 15 listopada o 06:35 UTC zakończył się poprawnie; lokalny odczyt publicznego RSS również zwrócił HTTP 200. Kod nie obchodzi odmowy dostępu OLX. Osobny test webhooka Discorda nadal trzeba uruchomić ręcznie, żeby potwierdzić dostarczenie wiadomości.
@@ -22,8 +28,9 @@ Bot sprawdza zapisane wyszukiwania OLX i wysyła nowe pasujące ogłoszenia na D
 
 - iPhone 11–15, również warianty Pro / Pro Max / mini, jeśli źródło zwróci je w wynikach.
 - iPhone 16 i nowsze nie są uwzględniane.
+- Alert pokazuje rozpoznany model, cenę, miejscowość oraz przybliżoną odległość w linii prostej od Wilkowic. Odległość wykorzystuje współrzędne GeoNames; część miejscowości może nie mieć dopasowania.
+- Domyślne wyszukiwania obejmują okolice Bielska-Białej w promieniu 30 km, bez limitu ceny. Możesz zmienić miasto, promień i ceny w komendach Discord albo w `config.json`.
 - Odrzucane są typowe ogłoszenia z akcesoriami, np. etui, szkła, kable i ładowarki.
-- Nie ma sztywnego limitu ceny ani lokalizacji. Możesz dodać je w filtrach OLX i wkleić własny adres wyszukiwania do `config.json`.
 - Pierwsze uruchomienie zapisuje aktualnie widoczne ogłoszenia bez wysyłania ich jako nowych. Powiadomienia ruszają dla kolejnych publikacji.
 
 ## Najprostsze uruchomienie w chmurze: GitHub Actions
@@ -33,7 +40,7 @@ Bot sprawdza zapisane wyszukiwania OLX i wysyła nowe pasujące ogłoszenia na D
 3. Otwórz zakładkę Actions i włącz workflow, jeśli GitHub o to poprosi. Uruchom `iPhone Sniper OLX` ręcznie, by sprawdzić konfigurację.
 4. Pierwszy poprawny przebieg zapisze obecne oferty bez alertów; następne powinny wysyłać nowe pasujące ogłoszenia.
 
-Workflow jest ustawiony na sprawdzanie co 5 minut. GitHub może czasami opóźnić zaplanowane uruchomienie. Przy prywatnym repozytorium sprawdź limit minut GitHub Actions na swoim koncie.
+Workflow jest ustawiony na sprawdzanie co 5 minut. GitHub może czasami opóźnić zaplanowane uruchomienie. Przy prywatnym repozytorium sprawdź limit minut GitHub Actions na swoim koncie. Szczegóły ograniczeń harmonogramu opisuje [dokumentacja GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule).
 
 ### Opcjonalnie: Telegram zamiast Discorda albo równolegle
 
@@ -78,7 +85,7 @@ Ustaw zmienne środowiskowe `DISCORD_WEBHOOK_URL` lub `TELEGRAM_BOT_TOKEN` i `TE
 python bot.py --loop
 ```
 
-Domyślnie sprawdza OLX co 90 sekund. Możesz zmienić `poll_interval_seconds` w `config.json` (minimum w kodzie to 60 sekund). Katalog `data/` musi być trwały, bo zawiera pamięć wysłanych ofert.
+Domyślnie sprawdza OLX co 90 sekund. Możesz zmienić `poll_interval_seconds` w `config.json` (minimum w kodzie to 60 sekund). Katalog `data/` musi być trwały, bo zawiera pamięć wysłanych ofert i bazę odległości. Baza miejscowości pochodzi z [GeoNames](https://www.geonames.org/) i jest udostępniana na licencji CC BY 4.0.
 
 ## Ważne ograniczenia
 

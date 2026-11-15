@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import html
 import json
 import logging
+import math
 import os
 import re
 import sys
@@ -14,6 +16,7 @@ import time
 import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlsplit, urlunsplit, urlencode
@@ -25,6 +28,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
 STATE_PATH = ROOT / "data" / "seen.json"
+PLACES_PATH = ROOT / "data" / "wilkowice_places.json"
 OLX_HOST = "www.olx.pl"
 LOG = logging.getLogger("iphone_sniper")
 load_dotenv(ROOT / ".env")
@@ -39,6 +43,7 @@ class Listing:
     location_date: str = ""
     image_url: str = ""
     source: str = "OLX"
+    location_name: str = ""
 
 
 def load_config() -> dict[str, Any]:
@@ -129,6 +134,64 @@ def _first_text(card: Any, selectors: list[str]) -> str:
     return ""
 
 
+def extract_location(value: str) -> tuple[str, str]:
+    place = re.search(r"Miejscowość:\s*([^,]+)", value, flags=re.IGNORECASE)
+    posted = re.search(r"Wystawiono:\s*([^,]+)", value, flags=re.IGNORECASE)
+    if place:
+        return place.group(1).strip(), posted.group(1).strip() if posted else ""
+    # OLX HTML cards commonly show “City - date” in one line.
+    return (value.split(" - ", 1)[0].strip(), "") if value else ("", "")
+
+
+def phone_model(title: str) -> str:
+    match = re.search(r"\biphone\s*(11|12|13|14|15)\s*(pro\s*max|pro|max|plus|mini)?\b", title, flags=re.IGNORECASE)
+    if not match:
+        return "Model nieznany"
+    suffix = re.sub(r"\s+", " ", (match.group(2) or "").strip()).title()
+    return f"iPhone {match.group(1)}" + (f" {suffix}" if suffix else "")
+
+
+def _normalized_place(name: str) -> str:
+    ascii_name = unicodedata.normalize("NFKD", name.replace("ł", "l").replace("Ł", "l")).encode("ascii", "ignore").decode("ascii").casefold()
+    return re.sub(r"[^a-z0-9]+", " ", ascii_name).strip()
+
+
+@lru_cache(maxsize=1)
+def _place_index() -> tuple[tuple[float, float], dict[str, list[tuple[float, float]]]]:
+    with PLACES_PATH.open("r", encoding="utf-8-sig") as f:
+        data = json.load(f)
+    center = data["center"]
+    places: dict[str, list[tuple[float, float]]] = {}
+    for place in data.get("places", []):
+        key = _normalized_place(str(place.get("name", "")))
+        if key:
+            places.setdefault(key, []).append((float(place["latitude"]), float(place["longitude"])))
+    return (float(center["latitude"]), float(center["longitude"])), places
+
+
+def distance_from_wilkowice(location_name: str) -> int | None:
+    key = _normalized_place(location_name)
+    if not key:
+        return None
+    try:
+        (origin_lat, origin_lon), places = _place_index()
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        LOG.warning("Nie można odczytać lokalnej bazy miejscowości (%s).", exc)
+        return None
+    candidates = places.get(key)
+    if not candidates:
+        return None
+    origin_phi = math.radians(origin_lat)
+    distances = []
+    for latitude, longitude in candidates:
+        phi = math.radians(latitude)
+        dphi = phi - origin_phi
+        dlambda = math.radians(longitude - origin_lon)
+        a = math.sin(dphi / 2) ** 2 + math.cos(origin_phi) * math.cos(phi) * math.sin(dlambda / 2) ** 2
+        distances.append(2 * 6371 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
+    return round(min(distances))
+
+
 def canonical_url(href: str) -> str:
     absolute = urljoin("https://www.olx.pl", href)
     parts = urlsplit(absolute)
@@ -196,6 +259,7 @@ def parse_olx_html(page_html: str, source_name: str = "OLX") -> list[Listing]:
             '[data-cy="location-date"]',
             "p[data-testid]",
         ])
+        location_name, _ = extract_location(location_date)
         image_url = ""
         img = card.select_one("img")
         if img:
@@ -211,6 +275,7 @@ def parse_olx_html(page_html: str, source_name: str = "OLX") -> list[Listing]:
             location_date=location_date,
             image_url=image_url,
             source=source_name,
+            location_name=location_name,
         ))
     return listings
 
@@ -232,12 +297,13 @@ def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
         price = _text(detail.select_one("h1"))
         price = re.sub(r"^Cena:\s*", "", price) or "Cena niepodana"
         location = _text(detail.select_one("p"))
+        location_name, _ = extract_location(location)
         image = detail.select_one("img")
         image_url = image.get("src", "") if image else ""
         if urlsplit(image_url).scheme != "https":
             image_url = ""
         url = canonical_url(link)
-        listings.append(Listing(stable_id(url), title, url, price, location, image_url, source_name))
+        listings.append(Listing(stable_id(url), title, url, price, location, image_url, source_name, location_name))
     if not listings:
         raise RuntimeError("Kanał RSS nie zawiera poprawnych ofert. Historia pozostaje bez zmian.")
     return listings
@@ -268,21 +334,40 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
 
 
 def format_plain(listing: Listing) -> str:
-    parts = [f"📱 {listing.title}", f"💰 {listing.price}"]
-    if listing.location_date:
-        parts.append(f"📍 {listing.location_date}")
+    place = listing.location_name or extract_location(listing.location_date)[0] or "Nie podano"
+    distance = distance_from_wilkowice(place)
+    parts = [
+        f"📱 Model: {phone_model(listing.title)}",
+        f"🏷️ Tytuł: {listing.title}",
+        f"💰 Cena: {listing.price}",
+        f"📍 Miejscowość: {place}",
+        f"📏 Od Wilkowic: około {distance} km w linii prostej" if distance is not None else "📏 Od Wilkowic: brak danych o odległości",
+    ]
+    posted = extract_location(listing.location_date)[1]
+    if posted:
+        parts.append(f"🕒 Wystawiono: {posted}")
     parts.extend([f"🔎 Wyszukiwanie: {listing.source}", listing.url])
     return "\n".join(parts)
 
 
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
+    place = listing.location_name or extract_location(listing.location_date)[0] or "Nie podano"
+    distance = distance_from_wilkowice(place)
     embed: dict[str, Any] = {
         "title": listing.title[:256],
         "url": listing.url,
-        "description": f"**Cena:** {listing.price}" + (f"\n**Lokalizacja / data:** {listing.location_date}" if listing.location_date else ""),
+        "fields": [
+            {"name": "Model", "value": phone_model(listing.title), "inline": True},
+            {"name": "Cena", "value": listing.price[:1024], "inline": True},
+            {"name": "Miejscowość", "value": place[:1024], "inline": True},
+            {"name": "Od Wilkowic", "value": f"około {distance} km (w linii prostej)" if distance is not None else "brak danych o odległości", "inline": True},
+        ],
         "color": 5793266,
         "footer": {"text": f"iPhone Sniper • {listing.source}"},
     }
+    posted = extract_location(listing.location_date)[1]
+    if posted:
+        embed["fields"].append({"name": "Wystawiono", "value": posted[:1024], "inline": True})
     if listing.image_url:
         embed["thumbnail"] = {"url": listing.image_url}
     response = requests.post(webhook_url, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
@@ -343,19 +428,36 @@ def run_once() -> int:
     initialized_searches = set(state.get("initialized_searches", []))
     if "initialized_searches" not in state and state.get("initialized"):
         initialized_searches.update(search["url"] for search in config["searches"])
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "iPhoneSniper/1.0 (personal listing alert; contact: local-user)",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "pl-PL,pl;q=0.9,en;q=0.5",
-    })
-
     found: list[Listing] = []
     fresh_ids: list[str] = []
     successful_searches = 0
+
+    def fetch_one(search: dict[str, str]) -> list[Listing]:
+        with requests.Session() as session:
+            session.headers.update({
+                "User-Agent": "iPhoneSniper/1.0 (personal listing alert; contact: local-user)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "pl-PL,pl;q=0.9,en;q=0.5",
+            })
+            return fetch_search(session, search, int(config.get("request_timeout_seconds", 20)))
+
+    results: dict[int, list[Listing] | Exception] = {}
+    with ThreadPoolExecutor(max_workers=min(3, len(config["searches"]))) as executor:
+        futures = {executor.submit(fetch_one, search): index for index, search in enumerate(config["searches"])}
+        for future in as_completed(futures):
+            index = futures[future]
+            try:
+                results[index] = future.result()
+            except Exception as exc:
+                results[index] = exc
+
+    # Process in config order so persistent state stays predictable despite concurrent fetches.
     for index, search in enumerate(config["searches"]):
         try:
-            listings = fetch_search(session, search, int(config.get("request_timeout_seconds", 20)))
+            result = results.get(index, RuntimeError("Brak wyniku wyszukiwania."))
+            if isinstance(result, Exception):
+                raise result
+            listings = result
             bootstrap = search["url"] not in initialized_searches and config.get("bootstrap_without_alerts", True)
             initialized_searches.add(search["url"])
             successful_searches += 1
@@ -371,8 +473,6 @@ def run_once() -> int:
                     found.append(listing)
         except Exception as exc:
             LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
-        if index < len(config["searches"]) - 1:
-            time.sleep(float(config.get("delay_between_searches_seconds", 1.5)))
 
     if successful_searches == 0:
         LOG.error("Żadne wyszukiwanie nie zadziałało. Stan pozostaje bez zmian.")
