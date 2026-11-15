@@ -2,6 +2,11 @@
 const defaults = () => ({models:[11,12,13,14,15],city:'Bielsko-Biała',radius:30,min:0,max:null,enabled:true});
 const json = (data,status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 const reply = content => json({type:4,data:{content,flags:64,allowed_mentions:{parse:[]}}});
+const modelPanel = current => ({
+ content:`## ⚙️ Ustawienia alertów\n**Modele iPhone** — zaznacz modele, które mają być monitorowane. Zmiana zapisuje się od razu.\n${current.models.map(n=>`☑️ iPhone ${n}`).join('  ·  ') || '☑️ Brak wybranych modeli'}\n\n**Lokalizacja**\n${current.city} · promień ${current.radius} km\n\n**Zakres ceny**\n${current.min}–${current.max??'bez limitu'} zł\n\n**Monitoring**\n${current.enabled?'🟢 Włączony':'⏸️ Wstrzymany'}\n\nZmiany wyszukiwania wczytuje kolejny przebieg monitora.`,
+ components:[{type:1,components:[{type:3,custom_id:'settings_models',placeholder:'Wybierz monitorowane modele',min_values:1,max_values:5,options:[11,12,13,14,15].map(n=>({label:`iPhone ${n}`,value:String(n),default:current.models.includes(n)}))}]}],
+ allowed_mentions:{parse:[]}
+});
 const hex = x => {
   if (!/^(?:[a-f\d]{2})+$/i.test(x || '')) throw Error('hex');
   return Uint8Array.from(x.match(/../g),v=>parseInt(v,16));
@@ -46,9 +51,18 @@ export default {async fetch(request,env,ctx){
  if(!await verify(request,body,env.DISCORD_PUBLIC_KEY))return json({error:'Invalid signature'},401);
  let interaction;try{interaction=JSON.parse(body);}catch{return json({error:'Invalid JSON'},400);}
  if(interaction.type===1)return json({type:1});
- if(interaction.type!==2)return json({error:'Unsupported interaction'},400);
+ if(interaction.type!==2&&interaction.type!==3)return json({error:'Unsupported interaction'},400);
  const user=interaction.member?.user?.id||interaction.user?.id;
  if(!env.OWNER_ID||user!==env.OWNER_ID)return reply('Tylko właściciel może sterować tym botem.');
+ if(interaction.type===3){
+  if(interaction.data?.custom_id!=='settings_models')return json({type:6});
+  const selected=interaction.data?.values||[];
+  if(selected.some(v=>!/^1[1-5]$/.test(v)))return json({type:6});
+  const current=await env.SETTINGS.get('settings','json')||defaults();
+  const next={...current,models:selected.map(Number).sort((a,b)=>a-b)};
+  await env.SETTINGS.put('settings',JSON.stringify(next));
+  return json({type:7,data:modelPanel(next)});
+ }
  const name=interaction.data?.name;
  const options=Object.fromEntries((interaction.data?.options||[]).map(o=>[o.name,o.value]));
  // Acknowledge within Discord's three-second window; storage happens afterwards.
@@ -56,7 +70,12 @@ export default {async fetch(request,env,ctx){
   let message;
   try{
    const current=await env.SETTINGS.get('settings','json')||defaults();
-   if(name==='ustawienia')message=`Modele: ${current.models.join(', ')}\nMiasto: ${current.city}, promień ${current.radius} km\nCena: ${current.min}–${current.max??'bez limitu'} zł\nMonitoring: ${current.enabled?'włączony':'pauza'}\nZmiany wczytuje kolejny przebieg monitora. Limit 5 minut nie jest zagwarantowany.`;
+   if(name==='ustawienia'){
+    const endpoint=`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`;
+    const result=await fetch(endpoint,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(modelPanel(current))});
+    if(!result.ok)console.error('Discord response failed',result.status);
+    return;
+   }
    else{
     const next=change(current,name,options);
     await env.SETTINGS.put('settings',JSON.stringify(next));

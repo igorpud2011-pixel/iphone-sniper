@@ -43,7 +43,7 @@ Komendy z domyślnymi uprawnieniami 0 mogą wymagać w ustawieniach serwera jawn
 
 Po rejestracji sprawdź na serwerze:
 
-- /ustawienia — pokazuje bieżące filtry,
+- /ustawienia — pokazuje bieżące filtry i menu wyboru modeli. Otwórz menu, zaznacz lub odznacz iPhone'y, a Discord zapisze wybór od razu,
 - /modele lista:11 13 15,
 - /lokalizacja miasto:Bielsko-Biała promien:30,
 - /cena minimum:200 maksimum:1500,
@@ -53,4 +53,4 @@ Po zmianie lokalizacji lub modeli pierwszy przebieg zapisuje aktualne wyniki jak
 
 Osobno skonfiguruj webhook alertów OLX: dodaj DISCORD_WEBHOOK_URL jako sekret repozytorium GitHub Actions. W Actions → iPhone Sniper OLX → Run workflow zaznacz test_discord, aby wysłać pojedynczy test bez pobierania ofert.
 
-Komendy sterują filtrami, ale nie poprawiają dostępności RSS. Wcześniejszy przebieg GitHub Actions zapisał HTTP 403 z OLX; źródło ofert i dostarczenie testowego alertu muszą zostać potwierdzone osobno. Bot nie obchodzi blokad OLX.
+Komendy sterują filtrami, ale nie poprawiają dostępności RSS. Skanowanie co minutę wymaga uruchomienia kontenera Docker stale na komputerze lub VPS; sam GitHub Actions nadal sprawdza co 5 minut. Po potwierdzeniu działania kontenera wyłącz harmonogram GitHub Actions, aby uniknąć dwóch skanerów. Zewnętrzny RSS może odświeżać dane rzadziej, więc częstsze sprawdzanie nie gwarantuje natychmiastowego wykrycia. Bot nie obchodzi blokad OLX.
