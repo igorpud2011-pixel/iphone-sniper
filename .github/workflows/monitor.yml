@@ -53,6 +53,8 @@ jobs:
         id: scan
         continue-on-error: true
         env:
+          SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
+          SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
           TEST_DISCORD: ${{ inputs.test_discord }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
