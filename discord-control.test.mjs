@@ -75,3 +75,17 @@ test('owner grants and revokes access; member cannot change access list',async()
   assert.equal((await call(member,2,{name:'ustawienia'})).type,4);
  }finally{globalThis.fetch=oldFetch;}
 });
+test('status reports are authenticated and preserve last success after failures',async()=>{
+ const db=new Map();const env={SETTINGS_KEY:'test',SETTINGS:{get:async k=>db.get(k),put:async(k,v)=>db.set(k,JSON.parse(v))}};
+ const t=Math.floor(Date.now()/1000);
+ const h={status:'ok',searches_total:6,searches_ok:6,fetched:200,matched:0,alerts:0,errors:[],finished_at:t-2,duration_seconds:10};
+ const post=(report,key='test')=>worker.fetch(new Request('https://example.com/health',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(report)}),env,{});
+ assert.equal((await post(h,'wrong')).status,401);
+ assert.equal((await post(h)).status,200);
+ await post({...h,status:'error',finished_at:t,errors:['Timeout'],searches_ok:0});
+ assert.equal(db.get('health').last_success_at,t-2);
+ assert.equal((await post({...h,fetched:-1})).status,400);
+ const {statusPanel}=await import('./discord-control.mjs');
+ assert.match(statusPanel(db.get('health'),{enabled:true},t).embeds[0].description,/Błąd/);
+ assert.match(statusPanel(db.get('health'),{enabled:true},t+600).embeds[0].description,/Brak świeżego/);
+});

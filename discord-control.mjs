@@ -16,6 +16,19 @@ export const modelPanel = raw => {
  components:[...chunks.map((items,i)=>({type:1,components:[{type:3,custom_id:`settings_select_${i}`,placeholder:`Wybierz modele · lista ${i+1}/${chunks.length}`,min_values:0,max_values:items.length,options:items.map(m=>({label:'iPhone '+m.replace(/\b(pro|max|plus|air|duo|se|xs|xr|x)\b/g,x=>x==='pro'?'Pro':x==='max'?'Max':x==='plus'?'Plus':x==='air'?'Air':x==='duo'?'Duo':x.toUpperCase()),value:m,default:current.models.includes(m)}))}]})),
  {type:1,components:[{type:2,custom_id:'settings_access',label:'👥 Dostęp',style:2},{type:2,custom_id:'settings_location',label:'📍 Lokalizacja',style:2},{type:2,custom_id:'settings_price',label:'💰 Cena',style:2},{type:2,custom_id:'settings_models_all',label:'Wszystkie',style:2},{type:2,custom_id:'settings_monitor',label:current.enabled?'⏸ Pauza':'▶ Wznów',style:current.enabled?2:3}]}],allowed_mentions:{parse:[]}};
 };
+export function statusPanel(health,settings,now=Math.floor(Date.now()/1000)){
+ const stale=!health||now-health.finished_at>300;
+ const state=!settings.enabled?'⏸️ Monitoring wstrzymany':stale?'⚠️ Brak świeżego raportu':({ok:'🟢 Skan zakończony poprawnie',partial:'🟠 Częściowy błąd',error:'🔴 Błąd skanowania',paused:'⏸️ Ostatni skan był wstrzymany'}[health.status]||'⚠️ Nieznany stan');
+ const date=t=>t?`<t:${t}:F> (<t:${t}:R>)`:'Brak danych';
+ return {content:'',embeds:[{title:'📡 Status monitora OLX',description:state,color:stale||health?.status==='error'?0xe74c3c:0x5865f2,fields:[
+ {name:'Ostatni raport',value:date(health?.finished_at)},
+ {name:'Ostatni pełny udany skan',value:date(health?.last_success_at)},
+ {name:'Wyszukiwania',value:health?`${health.searches_ok}/${health.searches_total} poprawnych`:'Brak danych',inline:true},
+ {name:'Odczytane pozycje',value:String(health?.fetched??'—'),inline:true},
+ {name:'Nowe pasujące / wysłane',value:health?`${health.matched} / ${health.alerts}`:'—',inline:true},
+ {name:'Czas skanu',value:health?`${health.duration_seconds} s`:'—',inline:true},
+ {name:'Błędy',value:health?.errors?.length?health.errors.join('\n').slice(0,1024):'Brak zgłoszonych błędów'+(health?'':' (brak raportu)')}],footer:{text:'Pozycje mogą powtarzać się między wyszukiwaniami. Status potwierdza odczyt RSS, nie kompletność OLX.'}}],allowed_mentions:{parse:[]}};
+}
 const hex = x => {
   if (!/^(?:[a-f\d]{2})+$/i.test(x || '')) throw Error('hex');
   return Uint8Array.from(x.match(/../g),v=>parseInt(v,16));
@@ -53,6 +66,17 @@ export function change(current,name,options={}){
 }
 export default {async fetch(request,env,ctx){
  const url=new URL(request.url);
+ if(url.pathname==='/health'&&request.method==='POST'){
+  if(!env.SETTINGS_KEY||request.headers.get('Authorization')!==`Bearer ${env.SETTINGS_KEY}`)return json({error:'Unauthorized'},401);
+  let h;try{h=await request.json();}catch{return json({error:'Invalid JSON'},400);}
+  const counts=['searches_total','searches_ok','fetched','matched','alerts'];
+  if(!['ok','partial','error','paused'].includes(h.status)||counts.some(k=>!Number.isInteger(h[k])||h[k]<0||h[k]>1000000)||!Number.isInteger(h.finished_at)||Math.abs(Date.now()/1000-h.finished_at)>300||!Number.isFinite(h.duration_seconds)||h.duration_seconds<0||h.duration_seconds>21600||!Array.isArray(h.errors)||h.errors.length>100||h.errors.some(e=>typeof e!=='string'||e.length>300))return json({error:'Invalid report'},400);
+  const previous=await env.SETTINGS.get('health','json');
+  if(previous?.finished_at>h.finished_at)return json({ok:true});
+  const clean=Object.fromEntries(['status','finished_at','duration_seconds','errors',...counts].map(k=>[k,h[k]]));
+  clean.last_success_at=h.status==='ok'?h.finished_at:previous?.last_success_at??null;
+  await env.SETTINGS.put('health',JSON.stringify(clean));return json({ok:true});
+ }
  if(url.pathname==='/settings'&&request.method==='GET'){
   if(!env.SETTINGS_KEY || request.headers.get('Authorization')!==`Bearer ${env.SETTINGS_KEY}`)return json({error:'Unauthorized'},401);
   return json(normalizeSettings(await env.SETTINGS.get('settings','json')||defaults()));
@@ -131,6 +155,12 @@ export default {async fetch(request,env,ctx){
   let message;
   try{
    const current=normalizeSettings(await env.SETTINGS.get('settings','json')||defaults());
+   if(name==='status'){
+    const health=await env.SETTINGS.get('health','json');
+    const result=await fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(statusPanel(health,current))});
+    if(!result.ok)console.error('Status Discord: HTTP',result.status);
+    return;
+   }
    if(name==='ustawienia'){
     const endpoint=`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`;
     const result=await fetch(endpoint,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(modelPanel(current))});

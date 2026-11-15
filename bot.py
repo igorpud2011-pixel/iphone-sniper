@@ -517,11 +517,13 @@ def send_alert(listing: Listing, timeout: int) -> bool:
     return all(results)
 
 
-def run_once() -> int:
+def _scan_once(report: dict[str, Any]) -> int:
     config = load_config()
     if not config.get("enabled", True):
+        report["status"] = "paused"
         LOG.info("Monitoring wstrzymany komendą /pauza.")
         return 0
+    report["searches_total"] = len(config["searches"])
     state = load_state()
     if state.get("id_format_version") != 2:
         LOG.info("Aktualizacja identyfikatorów: ustalam nową historię bez alertów o starych ofertach.")
@@ -561,9 +563,11 @@ def run_once() -> int:
             if isinstance(result, Exception):
                 raise result
             listings = result
+            report["fetched"] += len(listings)
             bootstrap = search["url"] not in initialized_searches and config.get("bootstrap_without_alerts", True)
             initialized_searches.add(search["url"])
             successful_searches += 1
+            report["searches_ok"] = successful_searches
             LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
             LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtr tytułu.",
                      sum(x.listing_id in seen for x in listings),
@@ -578,6 +582,7 @@ def run_once() -> int:
                 elif is_flip_candidate(listing, config):
                     found.append(listing)
         except Exception as exc:
+            report["errors"].append(f"Wyszukiwanie {index+1}: {type(exc).__name__}")
             LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
 
     if successful_searches == 0:
@@ -596,6 +601,10 @@ def run_once() -> int:
 
     # Non-matching results can be marked seen immediately. Matching items are stored only after
     # at least one channel confirms the send, so temporary notification errors can be retried.
+    report["matched"] = len(found)
+    report["alerts"] = len(successfully_notified)
+    if len(successfully_notified) < len(found):
+        report["errors"].append("Nie wszystkie alerty zostały dostarczone; bot ponowi wysyłkę.")
     state_seen = set(ordered_seen)
     for listing_id in fresh_ids:
         candidate = next((x for x in found if x.listing_id == listing_id), None)
@@ -609,6 +618,36 @@ def run_once() -> int:
     save_state(state, int(config.get("max_remembered_ids", 12000)))
     LOG.info("Koniec sprawdzania. Nowe oferty pasujące do iPhone'ów: %d; wysłane alerty: %d.", len(found), len(successfully_notified))
     return 0 if len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
+
+
+def publish_status(report: dict[str, Any]) -> None:
+    settings_url = os.getenv("SETTINGS_URL", "").strip()
+    key = os.getenv("SETTINGS_KEY", "").strip()
+    if not settings_url or not key:
+        return
+    try:
+        endpoint = urlunsplit((*urlsplit(settings_url)[:2], "/health", "", ""))
+        response = requests.post(endpoint, headers={"Authorization": "Bearer " + key}, json=report, timeout=8)
+        response.raise_for_status()
+    except requests.RequestException:
+        LOG.warning("Nie można zapisać statusu. Wynik skanowania pozostaje bez zmian.")
+
+
+def run_once() -> int:
+    report = {"status":"error", "searches_total":0, "searches_ok":0, "fetched":0, "matched":0, "alerts":0, "errors":[]}
+    started = time.monotonic()
+    try:
+        code = _scan_once(report)
+        if report["status"] != "paused":
+            report["status"] = {0:"ok",1:"partial"}.get(code,"error")
+    except Exception as exc:
+        report["errors"].append("Nie udało się wykonać skanu: " + type(exc).__name__)
+        LOG.error("Skan nieudany: %s", type(exc).__name__)
+        code = 2
+    report["finished_at"] = int(time.time())
+    report["duration_seconds"] = round(time.monotonic()-started, 1)
+    publish_status(report)
+    return code
 
 
 def main() -> int:
