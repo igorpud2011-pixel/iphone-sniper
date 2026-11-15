@@ -15,3 +15,17 @@ class BaselineChangeTests(unittest.TestCase):
             self.assertIn('NEW',state['notified_ids'])
             self.assertEqual(bot.run_once(),0)
             self.assertEqual(send.call_count,1)
+
+    def test_rejected_item_is_rechecked_and_failed_delivery_retried(self):
+        ad=bot.Listing('PRICE','iPhone 13','https://www.olx.pl/a',price='600 zł')
+        cfg={'searches':[{'url':'https://www.olx.pl/search'}],'model_ids':['13'],'price_max':500}
+        with tempfile.TemporaryDirectory() as tmp, patch.object(bot,'STATE_PATH',Path(tmp)/'seen.json'),patch.object(bot,'load_config',return_value=cfg),patch.object(bot,'fetch_search',return_value=[ad]),patch.object(bot,'publish_status'),patch.object(bot,'send_alert',return_value=False) as send:
+            bot.save_state({'initialized':True,'seen_ids':[],'initialized_searches':[cfg['searches'][0]['url']]})
+            self.assertEqual(bot.run_once(),0)
+            send.assert_not_called()
+            cfg['price_max']=700
+            self.assertEqual(bot.run_once(),1)
+            self.assertNotIn('PRICE',bot.load_state()['seen_ids'])
+            send.return_value=True
+            self.assertEqual(bot.run_once(),0)
+            self.assertIn('PRICE',bot.load_state()['notified_ids'])
