@@ -328,7 +328,12 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     if not re.search(include_pattern, title, flags=re.IGNORECASE):
         return False
     exclude_words = config.get("exclude_title_words", [])
-    if any(str(word).casefold() in title for word in exclude_words):
+    # Accessories at the start are standalone products. A phone bundled with
+    # an etui/cable remains a valid phone listing.
+    intent_words = {'kupię', 'kupie', 'zamienię', 'zamienie', 'na części', 'na czesci', 'sama bateria'}
+    if any((str(word).casefold() in title if str(word).casefold() in intent_words else
+            re.match(r"^\s*" + re.escape(str(word)) + r"\b", title, flags=re.IGNORECASE))
+           for word in exclude_words):
         return False
     return True
 
