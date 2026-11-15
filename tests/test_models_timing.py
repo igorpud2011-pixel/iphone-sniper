@@ -41,3 +41,13 @@ class ModelTimingTests(unittest.TestCase):
         cfg={'model_ids':['13'],'area_city':'Bielsko-Biała','area_radius':30}
         self.assertFalse(bot.is_flip_candidate(bot.Listing('1','iPhone 13','',location_name='Żory'),cfg))
         self.assertTrue(bot.is_flip_candidate(bot.Listing('2','iPhone 13','',location_name='Bielsko-Biała'),cfg))
+
+    def test_status_reports_error_and_pause(self):
+        with patch.object(bot, 'publish_status') as publish, patch.object(bot, 'load_config', side_effect=RuntimeError('secret-value')):
+            self.assertEqual(bot.run_once(),2)
+            report=publish.call_args.args[0]
+            self.assertEqual(report['status'],'error')
+            self.assertNotIn('secret-value',str(report))
+        with patch.object(bot,'publish_status') as publish, patch.object(bot,'load_config',return_value={'enabled':False}):
+            self.assertEqual(bot.run_once(),0)
+            self.assertEqual(publish.call_args.args[0]['status'],'paused')
