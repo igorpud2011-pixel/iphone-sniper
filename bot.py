@@ -134,7 +134,8 @@ def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
     payload = {"initialized": bool(state.get("initialized", False)), "seen_ids": ids,
                "initialized_searches": state.get("initialized_searches", []),
                "bootstrap_searches": state.get("bootstrap_searches", []),
-               "notified_ids": state.get("notified_ids", [])[-max_seen:], "id_format_version": 2}
+               "notified_ids": state.get("notified_ids", [])[-max_seen:],
+               "rejected_ids": state.get("rejected_ids", [])[-max_seen:], "id_format_version": 2}
     tmp = STATE_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -595,7 +596,8 @@ def _scan_once(report: dict[str, Any]) -> int:
         state["bootstrap_searches"] = [] if state.get("initialized") else [search["url"] for search in config["searches"]]
     bootstrap_searches = set(state["bootstrap_searches"])
     ordered_seen = list(dict.fromkeys(str(x) for x in state.get("seen_ids", [])))
-    seen = set(ordered_seen)
+    rejected = set(state.get("rejected_ids", []))
+    seen = set(ordered_seen) - rejected
     initialized_searches = set(state.get("initialized_searches", []))
     if "initialized_searches" not in state and state.get("initialized"):
         initialized_searches.update(search["url"] for search in config["searches"])
@@ -647,7 +649,10 @@ def _scan_once(report: dict[str, Any]) -> int:
                 if bootstrap:
                     pass
                 elif is_flip_candidate(listing, config):
+                    rejected.discard(listing.listing_id)
                     found.append(listing)
+                else:
+                    rejected.add(listing.listing_id)
         except Exception as exc:
             report["errors"].append(f"Wyszukiwanie {index+1}: {type(exc).__name__}")
             LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
@@ -679,10 +684,11 @@ def _scan_once(report: dict[str, Any]) -> int:
             if listing_id not in state_seen:
                 state_seen.add(listing_id)
                 ordered_seen.append(listing_id)
+    state["rejected_ids"] = sorted(rejected)
     state["bootstrap_searches"] = sorted(bootstrap_searches)
     state["notified_ids"] = list(dict.fromkeys(state.get("notified_ids", []) + [x.listing_id for x in found if x.listing_id in successfully_notified]))
     state["initialized"] = True
-    state["seen_ids"] = ordered_seen
+    state["seen_ids"] = [i for i in ordered_seen if i not in {a.listing_id for a in found if a.listing_id not in successfully_notified}]
     state["initialized_searches"] = sorted(initialized_searches)
     save_state(state, int(config.get("max_remembered_ids", 12000)))
     LOG.info("Koniec sprawdzania. Nowe oferty pasujące do iPhone'ów: %d; wysłane alerty: %d.", len(found), len(successfully_notified))
