@@ -40,7 +40,7 @@ Bot sprawdza zapisane wyszukiwania OLX i wysyła nowe pasujące ogłoszenia na D
 3. Otwórz zakładkę Actions i włącz workflow, jeśli GitHub o to poprosi. Uruchom `iPhone Sniper OLX` ręcznie, by sprawdzić konfigurację.
 4. Pierwszy poprawny przebieg zapisze obecne oferty bez alertów; następne powinny wysyłać nowe pasujące ogłoszenia.
 
-Workflow jest ustawiony na sprawdzanie co 5 minut. GitHub może czasami opóźnić zaplanowane uruchomienie. Przy prywatnym repozytorium sprawdź limit minut GitHub Actions na swoim koncie. Szczegóły ograniczeń harmonogramu opisuje [dokumentacja GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule).
+GitHub Actions uruchamia skan co 5 minut, z przesunięciem na 2., 7., 12. minutę itd., żeby unikać szczytu obciążenia na początku każdej godziny. GitHub może opóźnić uruchomienie, więc nie da się zagwarantować sztywnego limitu 5 minut. Przy prywatnym repozytorium sprawdź limit minut GitHub Actions na swoim koncie. Szczegóły opisuje [dokumentacja harmonogramów GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule).
 
 ### Opcjonalnie: Telegram zamiast Discorda albo równolegle
 
@@ -85,9 +85,9 @@ Ustaw zmienne środowiskowe `DISCORD_WEBHOOK_URL` lub `TELEGRAM_BOT_TOKEN` i `TE
 python bot.py --loop
 ```
 
-Domyślnie sprawdza źródło RSS co 60 sekund. Dockerfile uruchamia ten tryb automatycznie. W repozytorium jest też `docker-compose.yml`, który zachowuje pamięć ogłoszeń i uruchamia bota ponownie po restarcie maszyny. Skopiuj `.env.example` do `.env`, wpisz webhook Discorda w `DISCORD_WEBHOOK_URL`, a opcjonalnie ustaw `SETTINGS_URL` i `SETTINGS_KEY`. Uruchom `docker compose up -d --build`; logi podejrzysz przez `docker compose logs -f`. Nie wysyłaj ani nie commituj pliku `.env`. Po uruchomieniu i potwierdzeniu alertu wyłącz harmonogram `schedule` GitHub Actions, aby nie działały dwa niezależne skanery i nie wysyłały duplikatów. Baza miejscowości pochodzi z [GeoNames](https://www.geonames.org/) i jest udostępniana na licencji CC BY 4.0.
+To alternatywa dla bieżącego trybu GitHub Actions. Domyślnie tryb ciągły sprawdza RSS co 60 sekund; tę wartość ustawia `poll_interval_seconds`. Dockerfile uruchamia ten tryb automatycznie. `docker-compose.yml` zachowuje pamięć ogłoszeń i uruchamia bota ponownie po restarcie maszyny. Skopiuj `.env.example` do `.env`, wpisz webhook Discorda w `DISCORD_WEBHOOK_URL`, a opcjonalnie ustaw `SETTINGS_URL` i `SETTINGS_KEY`. Uruchom `docker compose up -d --build`; logi podejrzysz przez `docker compose logs -f`. Nie wysyłaj ani nie commituj pliku `.env`. Po uruchomieniu i potwierdzeniu alertu wyłącz harmonogram GitHub Actions, aby nie działały dwa niezależne skanery i nie wysyłały duplikatów. Baza miejscowości pochodzi z [GeoNames](https://www.geonames.org/) i jest udostępniana na licencji CC BY 4.0.
 
-Skan co minutę skraca opóźnienie samego monitora do około 0–60 sekund plus czas pobrania danych i wysłania alertu. Nie przyspieszy publikacji po stronie OLX ani odświeżenia zewnętrznego RSS; jeśli RSS pokaże ofertę późno, alert też przyjdzie późno. Monitor nie widzi ofert, których publiczne wyniki i RSS jeszcze nie udostępniają.
+W bieżącym trybie GitHub Actions odstęp wynosi 5 minut; w trybie ciągłym około 0–60 sekund plus pobranie danych i wysłanie alertu. Żaden z nich nie przyspieszy publikacji po stronie OLX ani odświeżenia zewnętrznego RSS. Monitor nie widzi ofert, których publiczne wyniki i RSS jeszcze nie udostępniają.
 
 ## Ważne ograniczenia
 
