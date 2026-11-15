@@ -48,6 +48,8 @@ class Listing:
     image_url: str = ""
     source: str = "OLX"
     location_name: str = ""
+    detected_at: int = 0
+    fetch_seconds: float | None = None
 
 
 def load_config() -> dict[str, Any]:
@@ -364,17 +366,26 @@ def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
     return listings
 
 
+def stamp_listings(listings: list[Listing], started: float) -> list[Listing]:
+    timestamp, duration = int(time.time()), round(time.monotonic()-started, 2)
+    for listing in listings:
+        listing.detected_at, listing.fetch_seconds = timestamp, duration
+    return listings
+
+
 def fetch_search(session: requests.Session, search: dict[str, str], timeout: int) -> list[Listing]:
+    started = time.monotonic()
     url = search["url"]
     if search.get("source") == "rss":
         response = session.get("https://tedeelock.com/src/get.php", params={"url": url}, timeout=timeout)
         response.raise_for_status()
-        return parse_rss(response.text, search.get("name", "OLX") + " · RSS")
+        listings = parse_rss(response.text, search.get("name", "OLX") + " · RSS")
+        return stamp_listings(listings, started)
     response = session.get(url, timeout=timeout)
     if response.status_code in (403, 429):
         raise RuntimeError(f"OLX odpowiedział kodem {response.status_code}; pomijam to sprawdzenie bez obchodzenia blokady.")
     response.raise_for_status()
-    return parse_olx_html(response.text, search.get("name", "OLX"))
+    return stamp_listings(parse_olx_html(response.text, search.get("name", "OLX")), started)
 
 
 def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
@@ -428,26 +439,11 @@ def format_plain(listing: Listing) -> str:
 
 
 def capture_timing(listing: Listing, now: datetime | None = None) -> str:
-    now = now or datetime.now(ZoneInfo("Europe/Warsaw"))
-    text = listing.location_date.casefold()
-    clock = re.search(r"(?<!\d)(\d{1,2}):(\d{2})(?::(\d{2}))?", text)
-    iso = re.search(r"(20\d{2})-(\d{2})-(\d{2})", text)
-    posted = None
-    try:
-        if clock and iso:
-            posted = datetime(*map(int, iso.groups()), *[int(x or 0) for x in clock.groups()], tzinfo=now.tzinfo)
-        elif clock and ("dzisiaj" in text or "wczoraj" in text):
-            posted = now.replace(hour=int(clock[1]), minute=int(clock[2]), second=int(clock[3] or 0), microsecond=0)
-            if "wczoraj" in text:
-                posted -= timedelta(days=1)
-    except ValueError:
-        posted = None
-    detected = f"Wykryto o {now:%H:%M:%S}"
-    if posted:
-        seconds = int((now-posted).total_seconds())
-        if seconds >= 0:
-            return f"około {seconds//60} min od daty podanej przez OLX\n{detected}"
-    return f"{detected}\nŹródło nie podaje dokładnej godziny publikacji."
+    timestamp = listing.detected_at or int((now or datetime.now(ZoneInfo("UTC"))).timestamp())
+    result = f"Wykryto: <t:{timestamp}:F> (<t:{timestamp}:R>)"
+    if listing.fetch_seconds is not None:
+        result += f"\nPobranie i odczyt źródła: {listing.fetch_seconds:.2f} s"
+    return result + "\nOpóźnienie od publikacji: brak wiarygodnego pomiaru w RSS."
 
 
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
@@ -470,7 +466,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     posted = extract_location(listing.location_date)[1]
     if posted:
         embed["fields"].append({"name": "Wystawiono", "value": posted[:1024], "inline": True})
-    embed["fields"].append({"name": "⚡ Przechwycenie", "value": capture_timing(listing), "inline": False})
+    embed["fields"].append({"name": "⏱️ Wykrycie i odczyt", "value": capture_timing(listing), "inline": False})
     if listing.image_url:
         embed["image"] = {"url": listing.image_url}
     response = requests.post(webhook_url, json={"embeds": [embed], "allowed_mentions": {"parse": []}}, timeout=timeout)
@@ -547,7 +543,7 @@ def _scan_once(report: dict[str, Any]) -> int:
             return fetch_search(session, search, min(20, int(config.get("request_timeout_seconds", 20))))
 
     results: dict[int, list[Listing] | Exception] = {}
-    with ThreadPoolExecutor(max_workers=min(5, len(config["searches"]))) as executor:
+    with ThreadPoolExecutor(max_workers=min(6, len(config["searches"]))) as executor:
         futures = {executor.submit(fetch_one, search): index for index, search in enumerate(config["searches"])}
         for future in as_completed(futures):
             index = futures[future]
