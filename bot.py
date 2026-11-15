@@ -129,12 +129,16 @@ def load_state() -> dict[str, Any]:
     try:
         with STATE_PATH.open("r", encoding="utf-8") as f:
             state = json.load(f)
-        if not isinstance(state.get("seen_ids"), list):
+        if not isinstance(state, dict) or not isinstance(state.get("seen_ids"), list):
             raise ValueError("Nieprawidłowy format seen_ids")
+        for key in ("seen_ids", "notified_ids", "rejected_ids", "bootstrap_searches", "initialized_searches"):
+            if key in state and (not isinstance(state[key], list) or any(not isinstance(x, str) for x in state[key])):
+                raise ValueError("Nieprawidłowy format historii")
         return state
     except (OSError, json.JSONDecodeError, ValueError) as exc:
-        LOG.warning("Nie można odczytać stanu (%s). Tworzę nowy stan.", exc)
-        return {"initialized": False, "seen_ids": []}
+        # Never silently replace an existing history with a fresh baseline:
+        # that could consume new offers without sending any notification.
+        raise RuntimeError("Nie można odczytać historii ofert; zachowuję plik do naprawy.") from exc
 
 
 def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
@@ -195,7 +199,7 @@ def detect_model(title: str) -> str | None:
         return "se"
     for model in sorted(MODEL_IDS, key=len, reverse=True):
         pattern = re.escape(model).replace(r"\ ", r"\s*")
-        if re.match(pattern + r"(?![a-z0-9])", rest):
+        if re.match(pattern + r"(?:(?![a-z0-9])|(?=(?:32|64|128|256|512|1024|2048)gb\b))", rest):
             return model
     return None
 
@@ -414,6 +418,15 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
+    # Product names can follow the phone model ("iPhone 13 etui czarne").
+    # Preserve bundles such as "iPhone 13 z etui" and storage-first phone titles.
+    model = detect_model(title)
+    if model:
+        normalized = normalize_phone_title(title)
+        model_pattern = re.escape(model).replace(r"\ ", r"\s*")
+        tail = re.search(r"\biphone\s*" + model_pattern + r"\s+(.+)", normalized)
+        if tail and re.match(r"(?:etui|etiu|case|pokrowiec|folia|(?:szkło|szklo) ochronne|(?:wyświetlacz|wyswietlacz|ekran) (?:lcd|oled)|oryginalne części)\b", tail[1]):
+            return False
     city, radius = config.get("area_city"), config.get("area_radius")
     if city and radius is not None:
         place = listing.location_name or extract_location(listing.location_date)[0]
@@ -473,7 +486,17 @@ def resale_table() -> dict[str, Any]:
     raw = os.getenv("RESALE_PRICES_JSON", "").strip()
     if not raw:
         raise ValueError("Cennik nie został skonfigurowany.")
-    return json.loads(raw)
+    table = json.loads(raw)
+    if not isinstance(table, dict) or not isinstance(table.get("date"), str) or not isinstance(table.get("rows"), list):
+        raise ValueError("Niepoprawny format cennika.")
+    for row in table["rows"]:
+        if (not isinstance(row, dict) or not isinstance(row.get("model"), str)
+            or type(row.get("storage_gb")) is not int or row["storage_gb"] <= 0
+            or type(row.get("sale_price")) not in (int, float)
+            or not math.isfinite(row["sale_price"]) or row["sale_price"] < 0
+            or type(row.get("suspect")) is not bool):
+            raise ValueError("Niepoprawny wiersz cennika.")
+    return table
 
 
 def resale_estimate(listing: Listing) -> str:
@@ -634,6 +657,19 @@ def _scan_once(report: dict[str, Any]) -> int:
             return fetch_search(session, search, min(20, int(config.get("request_timeout_seconds", 20))))
 
     successfully_notified: set[str] = set()
+
+    def checkpoint() -> None:
+        pending = {x.listing_id for x in found} - successfully_notified
+        known = list(dict.fromkeys(ordered_seen + fresh_ids))
+        state["seen_ids"] = [key for key in known if key not in pending]
+        state["rejected_ids"] = sorted(rejected)
+        state["bootstrap_searches"] = sorted(bootstrap_searches)
+        state["initialized_searches"] = sorted(initialized_searches)
+        state["notified_ids"] = list(dict.fromkeys(state.get("notified_ids", []) +
+            [x.listing_id for x in found if x.listing_id in successfully_notified]))
+        state["initialized"] = True
+        save_state(state, int(config.get("max_remembered_ids", 12000)))
+
     # Consume each completed source immediately. A slow supplementary feed must
     # not hold back notifications already available from a healthy source.
     with ThreadPoolExecutor(max_workers=min(8, len(config["searches"]))) as executor:
@@ -667,6 +703,7 @@ def _scan_once(report: dict[str, Any]) -> int:
                         try:
                             if send_alert(listing, int(config.get("request_timeout_seconds", 20))):
                                 successfully_notified.add(listing.listing_id)
+                                checkpoint()
                                 LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
                         except Exception as exc:
                             LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
@@ -686,20 +723,7 @@ def _scan_once(report: dict[str, Any]) -> int:
     report["alerts"] = len(successfully_notified)
     if len(successfully_notified) < len(found):
         report["errors"].append("Nie wszystkie alerty zostały dostarczone; bot ponowi wysyłkę.")
-    state_seen = set(ordered_seen)
-    for listing_id in fresh_ids:
-        candidate = next((x for x in found if x.listing_id == listing_id), None)
-        if candidate is None or listing_id in successfully_notified:
-            if listing_id not in state_seen:
-                state_seen.add(listing_id)
-                ordered_seen.append(listing_id)
-    state["rejected_ids"] = sorted(rejected)
-    state["bootstrap_searches"] = sorted(bootstrap_searches)
-    state["notified_ids"] = list(dict.fromkeys(state.get("notified_ids", []) + [x.listing_id for x in found if x.listing_id in successfully_notified]))
-    state["initialized"] = True
-    state["seen_ids"] = [i for i in ordered_seen if i not in {a.listing_id for a in found if a.listing_id not in successfully_notified}]
-    state["initialized_searches"] = sorted(initialized_searches)
-    save_state(state, int(config.get("max_remembered_ids", 12000)))
+    checkpoint()
     LOG.info("Koniec sprawdzania. Nowe oferty pasujące do iPhone'ów: %d; wysłane alerty: %d.", len(found), len(successfully_notified))
     return 0 if len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
 
