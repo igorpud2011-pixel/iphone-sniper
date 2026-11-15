@@ -357,7 +357,8 @@
     "ID13XB0A",
     "ID18O5RL",
     "ID1DHKSH",
-    "ID1BG0S7"
+    "ID1BG0S7",
+    "ID1DHLUG"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-11/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
@@ -376,6 +377,8 @@
     "https://www.olx.pl/elektronika/telefony/q-iphone-13/?search%5Border%5D=created_at%3Adesc"
   ],
   "bootstrap_searches": [],
-  "notified_ids": [],
+  "notified_ids": [
+    "ID1DHLUG"
+  ],
   "id_format_version": 2
 }
