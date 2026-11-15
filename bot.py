@@ -11,11 +11,12 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit, urlencode
 
 import requests
 from bs4 import BeautifulSoup
@@ -43,6 +44,42 @@ class Listing:
 def load_config() -> dict[str, Any]:
     with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = json.load(f)
+    settings_url = os.getenv("SETTINGS_URL", "").strip()
+    if settings_url:
+        if urlsplit(settings_url).scheme != "https":
+            raise ValueError("SETTINGS_URL musi używać HTTPS.")
+        key = os.getenv("SETTINGS_KEY", "").strip()
+        if not key:
+            raise ValueError("Brak SETTINGS_KEY.")
+        try:
+            response = requests.get(settings_url, headers={"Authorization": "Bearer " + key}, timeout=15)
+            response.raise_for_status()
+            remote = response.json()
+        except (requests.RequestException, ValueError):
+            raise RuntimeError("Nie można odczytać ustawień Discorda. Pomijam przebieg zamiast używać starych filtrów.") from None
+        models = remote.get("models")
+        if not isinstance(models, list) or not models or any(type(n) is not int or n not in range(11, 16) for n in models):
+            raise ValueError("Niepoprawne modele w ustawieniach.")
+        city = remote.get("city", "")
+        if not isinstance(city, str) or not re.fullmatch(r"[^\W\d_][^\d_]{1,79}", city):
+            raise ValueError("Niepoprawna nazwa miasta.")
+        slug = unicodedata.normalize("NFKD", city.lower().replace("ł", "l")).encode("ascii", "ignore").decode()
+        slug = re.sub(r"[^a-z]+", "-", slug).strip("-")
+        radius = remote.get("radius")
+        minimum, maximum = remote.get("min", 0), remote.get("max")
+        if type(radius) is not int or radius not in [0,2,5,10,15,30,50,75,100,150,200]:
+            raise ValueError("Niepoprawny promień.")
+        if type(minimum) is not int or not 0 <= minimum <= 100000 or (maximum is not None and (type(maximum) is not int or not minimum <= maximum <= 100000)):
+            raise ValueError("Niepoprawne ceny.")
+        if type(remote.get("enabled")) is not bool:
+            raise ValueError("Niepoprawny stan monitorowania.")
+        query = {"search[dist]": radius, "search[order]": "created_at:desc", "search[filter_float_price:from]": minimum}
+        if maximum is not None:
+            query["search[filter_float_price:to]"] = maximum
+        config["searches"] = [{"name": f"iPhone {n} · {city} +{radius} km", "source": "rss",
+            "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone-{n}/?" + urlencode(query)} for n in models]
+        config["include_title_regex"] = r"\biphone\s*(" + "|".join(map(str, models)) + r")\b"
+        config["enabled"] = remote["enabled"]
     searches = config.get("searches", [])
     if not searches:
         raise ValueError("config.json nie zawiera żadnych wyszukiwań.")
@@ -294,6 +331,9 @@ def send_alert(listing: Listing, timeout: int) -> bool:
 
 def run_once() -> int:
     config = load_config()
+    if not config.get("enabled", True):
+        LOG.info("Monitoring wstrzymany komendą /pauza.")
+        return 0
     state = load_state()
     if state.get("id_format_version") != 2:
         LOG.info("Aktualizacja identyfikatorów: ustalam nową historię bez alertów o starych ofertach.")
