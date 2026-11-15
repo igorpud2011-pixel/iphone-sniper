@@ -79,32 +79,44 @@ jobs:
             minutes="$SESSION_MINUTES"
             if ! [[ "$minutes" =~ ^[0-9]+$ ]] || [ "$minutes" -lt 1 ] || [ "$minutes" -gt 300 ]; then minutes=300; fi
             deadline=$((SECONDS + minutes * 60))
+            last_code=0
             while [ "$SECONDS" -lt "$deadline" ]; do
               started=$SECONDS
-              python bot.py || echo "::warning::Niepełny skan; ponowię za minutę"
+              if python bot.py; then
+                last_code=0
+              else
+                last_code=$?
+                echo "::warning::Niepełny skan; ponowię za minutę"
+              fi
+              # Detect source changes before a state push can pull them locally.
+              git fetch origin main --quiet
+              source_changed=false
+              if ! git diff --quiet HEAD origin/main -- . ':!data/seen.json'; then
+                source_changed=true
+              fi
               git add data/seen.json
               if ! git diff --cached --quiet; then
                 git commit -m "Aktualizacja zapisanych ofert"
                 git pull --rebase origin main
                 git push
               fi
-              # Stop on source changes so the next queued run loads the fixes.
-              git fetch origin main --quiet
-              if ! git diff --quiet HEAD origin/main -- . ':!data/seen.json'; then
-                break
-              fi
+              # Restart through the tested checkout instead of running newly pulled code.
+              if [ "$source_changed" = "true" ]; then break; fi
               delay=$((60 - (SECONDS - started)))
               if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
             done
+            exit "$last_code"
           fi
 
       - name: Zapisz wykryte ogłoszenia
+        if: ${{ always() && steps.scan.outcome != 'skipped' && inputs.test_discord != true }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/seen.json
           if ! git diff --cached --quiet; then
             git commit -m "Aktualizacja zapisanych ofert"
+            git pull --rebase origin main
             git push
           fi
 
