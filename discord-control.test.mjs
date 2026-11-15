@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{change,verify} from './discord-control.mjs';
+import worker,{change,modelPanel,verify} from './discord-control.mjs';
 const state={models:[11,12],city:'Bielsko-Biała',radius:30,min:0,max:null,enabled:true};
 test('model and price validation; state is immutable',()=>{
  assert.deepEqual(change(state,'modele',{lista:'15 11 15'}).models,[11,15]);
@@ -8,6 +8,15 @@ test('model and price validation; state is immutable',()=>{
  assert.throws(()=>change(state,'cena',{minimum:600,maksimum:500}));
  assert.equal(change(state,'pauza').enabled,false);
  assert.equal(state.enabled,true);
+});
+test('settings panel offers one toggle for every supported iPhone',()=>{
+ const panel=modelPanel(state);
+ assert.match(panel.content,/\*\*Wybrane:\*\* iPhone 11 · iPhone 12/);
+ assert.deepEqual(panel.components[0].components.map(button=>button.custom_id),[
+  'settings_model_11','settings_model_12','settings_model_13','settings_model_14','settings_model_15'
+ ]);
+ assert.equal(panel.components[0].components[0].label,'✓ iPhone 11');
+ assert.equal(panel.components[0].components[2].label,'iPhone 13');
 });
 test('private settings endpoint denies anonymous requests',async()=>{
  const r=await worker.fetch(new Request('https://example.com/settings'),{SETTINGS_KEY:'test'},{});

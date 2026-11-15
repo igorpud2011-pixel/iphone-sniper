@@ -2,9 +2,15 @@
 const defaults = () => ({models:[11,12,13,14,15],city:'Bielsko-Biała',radius:30,min:0,max:null,enabled:true});
 const json = (data,status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
 const reply = content => json({type:4,data:{content,flags:64,allowed_mentions:{parse:[]}}});
-const modelPanel = current => ({
- content:`## ⚙️ Ustawienia alertów\n**Modele iPhone** — zaznacz modele, które mają być monitorowane. Zmiana zapisuje się od razu.\n${current.models.map(n=>`☑️ iPhone ${n}`).join('  ·  ') || '☑️ Brak wybranych modeli'}\n\n**Lokalizacja**\n${current.city} · promień ${current.radius} km\n\n**Zakres ceny**\n${current.min}–${current.max??'bez limitu'} zł\n\n**Monitoring**\n${current.enabled?'🟢 Włączony':'⏸️ Wstrzymany'}\n\nZmiany wyszukiwania wczytuje kolejny przebieg monitora.`,
- components:[{type:1,components:[{type:3,custom_id:'settings_models',placeholder:'Wybierz monitorowane modele',min_values:1,max_values:5,options:[11,12,13,14,15].map(n=>({label:`iPhone ${n}`,value:String(n),default:current.models.includes(n)}))}]}],
+export const modelPanel = current => ({
+ content:`## ⚙️ Ustawienia alertów OLX\n\n### Szukane modele\nKliknij przycisk, aby włączyć albo wyłączyć dany model.\n**Wybrane:** ${current.models.map(n=>`iPhone ${n}`).join(' · ')}\n\n### Lokalizacja\n📍 ${current.city} · do ${current.radius} km\n\n### Cena\n💰 ${current.min}–${current.max??'bez limitu'} zł\n\n### Monitoring\n${current.enabled?'🟢 Włączony':'⏸️ Wstrzymany'}\n\nZmiany zapisują się od razu. Nowe filtry zostaną użyte przy następnym skanie.`,
+ components:[
+  {type:1,components:[11,12,13,14,15].map(n=>({type:2,custom_id:`settings_model_${n}`,label:`${current.models.includes(n)?'✓ ':''}iPhone ${n}`,style:current.models.includes(n)?1:2}))},
+  {type:1,components:[
+   {type:2,custom_id:'settings_models_all',label:'Wszystkie modele',style:2,disabled:current.models.length===5},
+   {type:2,custom_id:'settings_monitor',label:current.enabled?'Wstrzymaj monitoring':'Włącz monitoring',style:current.enabled?2:3}
+  ]}
+ ],
  allowed_mentions:{parse:[]}
 });
 const hex = x => {
@@ -55,11 +61,18 @@ export default {async fetch(request,env,ctx){
  const user=interaction.member?.user?.id||interaction.user?.id;
  if(!env.OWNER_ID||user!==env.OWNER_ID)return reply('Tylko właściciel może sterować tym botem.');
  if(interaction.type===3){
-  if(interaction.data?.custom_id!=='settings_models')return json({type:6});
-  const selected=interaction.data?.values||[];
-  if(selected.some(v=>!/^1[1-5]$/.test(v)))return json({type:6});
+  const action=interaction.data?.custom_id||'';
   const current=await env.SETTINGS.get('settings','json')||defaults();
-  const next={...current,models:selected.map(Number).sort((a,b)=>a-b)};
+  let next;
+  const match=/^settings_model_(1[1-5])$/.exec(action);
+  if(match){
+   const model=Number(match[1]);
+   const models=current.models.includes(model)?current.models.filter(n=>n!==model):[...current.models,model].sort((a,b)=>a-b);
+   if(!models.length)return reply('Wybierz przynajmniej jeden model iPhone.');
+   next={...current,models};
+  }else if(action==='settings_models_all')next={...current,models:[11,12,13,14,15]};
+  else if(action==='settings_monitor')next={...current,enabled:!current.enabled};
+  else return json({type:6});
   await env.SETTINGS.put('settings',JSON.stringify(next));
   return json({type:7,data:modelPanel(next)});
  }

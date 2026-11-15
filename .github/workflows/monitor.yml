@@ -7,6 +7,8 @@ on:
     paths:
       - bot.py
       - tests/**
+      - discord-control.mjs
+      - discord-control.test.mjs
       - .github/workflows/monitor.yml
   workflow_dispatch:
     inputs:
@@ -44,6 +46,9 @@ jobs:
 
       - name: Testy programu
         run: python -m unittest discover -s tests -v
+
+      - name: Testy sterowania Discord
+        run: node --test discord-control.test.mjs
 
       - name: Sprawdź nowe ogłoszenia
         id: scan

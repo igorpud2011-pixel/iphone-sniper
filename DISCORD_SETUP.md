@@ -43,7 +43,7 @@ Komendy z domyślnymi uprawnieniami 0 mogą wymagać w ustawieniach serwera jawn
 
 Po rejestracji sprawdź na serwerze:
 
-- /ustawienia — pokazuje bieżące filtry i menu wyboru modeli. Otwórz menu, zaznacz lub odznacz iPhone'y, a Discord zapisze wybór od razu,
+- /ustawienia — pokazuje czytelny panel. Każdy przycisk iPhone 11–15 włącza albo wyłącza jeden model, przycisk „Wszystkie modele” zaznacza całą listę, a drugi przycisk wstrzymuje lub uruchamia monitoring. Zmiany zapisują się od razu,
 - /modele lista:11 13 15,
 - /lokalizacja miasto:Bielsko-Biała promien:30,
 - /cena minimum:200 maksimum:1500,
