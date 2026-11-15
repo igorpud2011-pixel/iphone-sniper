@@ -51,3 +51,27 @@ test('signed multi-select saves only its group and rejects other users',async()=
   assert.deepEqual(saved.models,['11','16e']);
  }finally{globalThis.fetch=oldFetch;}
 });
+test('owner grants and revokes access; member cannot change access list',async()=>{
+ const keys=await crypto.subtle.generateKey('Ed25519',true,['sign','verify']);
+ const pub=Buffer.from(await crypto.subtle.exportKey('raw',keys.publicKey)).toString('hex');
+ const owner='111111111111111111', member='222222222222222222';
+ const db=new Map([['settings',state],['access',[]]]);const waits=[];
+ const env={OWNER_ID:owner,DISCORD_PUBLIC_KEY:pub,SETTINGS:{get:async k=>db.get(k),put:async(k,v)=>db.set(k,JSON.parse(v))}};
+ const oldFetch=globalThis.fetch;globalThis.fetch=async()=>new Response('{}');
+ async function call(user,type,data){
+  const body=JSON.stringify({type,data,member:{user:{id:user}},application_id:'1',token:'test'}), ts=String(Math.floor(Date.now()/1000));
+  const sig=Buffer.from(await crypto.subtle.sign('Ed25519',keys.privateKey,new TextEncoder().encode(ts+body))).toString('hex');
+  const result=await worker.fetch(new Request('https://example.com/interactions',{method:'POST',headers:{'X-Signature-Timestamp':ts,'X-Signature-Ed25519':sig},body}),env,{waitUntil:p=>waits.push(p)});
+  await Promise.all(waits);return result.json();
+ }
+ try{
+  assert.equal((await call(member,2,{name:'ustawienia'})).type,4);
+  await call(owner,3,{custom_id:'settings_access_save',values:[member]});
+  assert.deepEqual(db.get('access'),[member]);
+  assert.equal((await call(member,2,{name:'ustawienia'})).type,5);
+  assert.equal((await call(member,3,{custom_id:'settings_access_save',values:[]})).type,4);
+  assert.deepEqual(db.get('access'),[member]);
+  await call(owner,3,{custom_id:'settings_access_save',values:[]});
+  assert.equal((await call(member,2,{name:'ustawienia'})).type,4);
+ }finally{globalThis.fetch=oldFetch;}
+});

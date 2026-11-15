@@ -96,6 +96,8 @@ def load_config() -> dict[str, Any]:
         config["searches"].append({"name": f"iPhone · {city} +{radius} km", "source":"rss",
             "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone/?" + urlencode(query)})
         config["model_ids"] = models
+        config["price_min"] = minimum
+        config["price_max"] = maximum
         config["enabled"] = remote["enabled"]
     searches = config.get("searches", [])
     if not searches:
@@ -167,7 +169,10 @@ def detect_model(title: str) -> str | None:
     if not match:
         return None
     rest = match.group(1)
-    if re.match(r"se\b", rest):
+    short_se = re.match(r"se\s*([123])\b", rest)
+    if short_se:
+        return {"1":"se 2016","2":"se 2020","3":"se 2022"}[short_se[1]]
+    if re.match(r"se(?:\b|20\d{2})", rest):
         for year, aliases in [("2022", r"2022|3[ .]*(?:gen|generacja)"), ("2020", r"2020|2[ .]*(?:gen|generacja)"), ("2016", r"2016|1[ .]*(?:gen|generacja)")]:
             if re.search(aliases, rest):
                 return "se " + year
@@ -360,6 +365,14 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
+    minimum, maximum = config.get("price_min", 0), config.get("price_max")
+    if minimum or maximum is not None:
+        price = re.search(r"(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:zł|pln)", listing.price, flags=re.IGNORECASE)
+        if not price:
+            return False
+        amount = float(re.sub(r"\s", "", price[1]).replace(",", "."))
+        if amount < minimum or (maximum is not None and amount > maximum):
+            return False
     exclude_words = config.get("exclude_title_words", [])
     prefix = title.split("iphone", 1)[0]
     # Accessories at the start are standalone products. A phone bundled with

@@ -14,7 +14,7 @@ export const modelPanel = raw => {
  {name:'💰 Cena',value:`${current.min}–${current.max??'bez limitu'} zł`,inline:true},
  {name:'Status',value:current.enabled?'🟢 Monitoring włączony':'⏸️ Monitoring wstrzymany',inline:true}],footer:{text:'Pierwszy skan nowego wyszukiwania ustala historię. Opóźnienie RSS może się różnić.'}}],
  components:[...chunks.map((items,i)=>({type:1,components:[{type:3,custom_id:`settings_select_${i}`,placeholder:`Wybierz modele · lista ${i+1}/${chunks.length}`,min_values:0,max_values:items.length,options:items.map(m=>({label:'iPhone '+m.replace(/\b(pro|max|plus|air|duo|se|xs|xr|x)\b/g,x=>x==='pro'?'Pro':x==='max'?'Max':x==='plus'?'Plus':x==='air'?'Air':x==='duo'?'Duo':x.toUpperCase()),value:m,default:current.models.includes(m)}))}]})),
- {type:1,components:[{type:2,custom_id:'settings_location',label:'📍 Lokalizacja',style:2},{type:2,custom_id:'settings_price',label:'💰 Cena',style:2},{type:2,custom_id:'settings_models_all',label:'Wszystkie',style:2},{type:2,custom_id:'settings_monitor',label:current.enabled?'⏸ Pauza':'▶ Wznów',style:current.enabled?2:3}]}],allowed_mentions:{parse:[]}};
+ {type:1,components:[{type:2,custom_id:'settings_access',label:'👥 Dostęp',style:2},{type:2,custom_id:'settings_location',label:'📍 Lokalizacja',style:2},{type:2,custom_id:'settings_price',label:'💰 Cena',style:2},{type:2,custom_id:'settings_models_all',label:'Wszystkie',style:2},{type:2,custom_id:'settings_monitor',label:current.enabled?'⏸ Pauza':'▶ Wznów',style:current.enabled?2:3}]}],allowed_mentions:{parse:[]}};
 };
 const hex = x => {
   if (!/^(?:[a-f\d]{2})+$/i.test(x || '')) throw Error('hex');
@@ -64,7 +64,27 @@ export default {async fetch(request,env,ctx){
  if(interaction.type===1)return json({type:1});
  if(![2,3,5].includes(interaction.type))return json({error:'Unsupported interaction'},400);
  const user=interaction.member?.user?.id||interaction.user?.id;
- if(!env.OWNER_ID||user!==env.OWNER_ID)return reply('Tylko właściciel może sterować tym botem.');
+ const owner=Boolean(env.OWNER_ID&&user===env.OWNER_ID);
+ const action=interaction.data?.custom_id||'';
+ if(action==='settings_access'||action==='settings_access_save'){
+  if(!owner)return reply('Tylko właściciel może nadawać i odbierać dostęp.');
+  ctx.waitUntil((async()=>{
+   let members=await env.SETTINGS.get('access','json')||[];
+   if(!Array.isArray(members))members=[];
+   if(action==='settings_access_save'){
+    const values=interaction.data.values||[];
+    if(values.length>25||values.some(id=>!/^\d{15,22}$/.test(id)))throw Error('Niepoprawna lista osób');
+    members=[...new Set(values)].filter(id=>id!==env.OWNER_ID);
+    await env.SETTINGS.put('access',JSON.stringify(members));
+   }
+   const panel={content:'## 👥 Dostęp do ustawień\nWybierz osoby, które mogą zmieniać wspólne filtry i pauzować alerty. Odznaczenie osoby odbiera dostęp. Tylko Ty możesz zarządzać tą listą.\n\n'+(members.length?'Dostęp: '+members.map(id=>`<@${id}>`).join(', '):'Dostęp ma obecnie tylko właściciel.'),embeds:[],components:[{type:1,components:[{type:5,custom_id:'settings_access_save',placeholder:'Wybierz osoby z dostępem',min_values:0,max_values:25,default_values:members.map(id=>({id,type:'user'}))}]}],allowed_mentions:{parse:[]}};
+   const result=await fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(panel)});
+   if(!result.ok)console.error('Panel dostępu: HTTP',result.status);
+  })().catch(()=>console.error('Nie udało się zapisać listy dostępu.')));
+  return json(action==='settings_access'?{type:5,data:{flags:64}}:{type:6});
+ }
+ const members=owner?[]:await env.SETTINGS.get('access','json');
+ if(!owner&&(!Array.isArray(members)||!members.includes(user)))return reply('Brak dostępu. Właściciel może dodać Cię w /ustawienia → Dostęp.');
  if(interaction.type===3){
   const id=interaction.data?.custom_id;
   if(id==='settings_location'||id==='settings_price'){

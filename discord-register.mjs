@@ -7,7 +7,7 @@ const commands=[
  {name:'lokalizacja',description:'Zmień miasto i promień',options:[text('miasto','Nazwa miasta, np. Bielsko-Biała'),{...integer('promien','Promień w kilometrach',true),choices:[0,2,5,10,15,30,50,75,100,150,200].map(n=>({name:String(n),value:n}))}]},
  {name:'cena',description:'Zmień ceny; brak maksimum usuwa górny limit',options:[integer('minimum','Cena minimalna'),integer('maksimum','Cena maksymalna')]},
  {name:'pauza',description:'Wstrzymaj alerty'}, {name:'start',description:'Wznów alerty'}
-].map(c=>({...c,type:1,default_member_permissions:'0'}));
+].map(c=>({...c,type:1,default_member_permissions:null}));
 const token=process.env.DISCORD_BOT_TOKEN;
 if(!token)throw Error('Brak sekretu DISCORD_BOT_TOKEN.');
 const headers={Authorization:`Bot ${token}`,'Content-Type':'application/json'};
