@@ -28,13 +28,13 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 MODEL_IDS = ['duo', '18 pro max', '18 pro', '17 pro max', '17 pro', '17', '17e', 'air', '16 pro max', '16 pro', '16 plus', '16', '16e', '15 pro max', '15 pro', '15 plus', '15', '14 pro max', '14 pro', '14 plus', '14', '13 pro max', '13 pro', '13 mini', '13', '12 pro max', '12 pro', '12 mini', '12', '11 pro max', '11 pro', '11', 'xs max', 'xs', 'xr', 'x', 'se 2022', 'se 2020', 'se 2016', 'se', '8 plus', '8', '7 plus', '7', '6s plus', '6s', '6 plus', '6', '5s', '5c', '5', '4s', '4', '3gs', '3g', '2g']
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
-STATE_PATH = ROOT / "data" / "seen.json"
+STATE_PATH = ROOT / "data" / ("seen-polska.json" if os.getenv("ALERT_PROFILE") == "polska" else "seen.json")
 PLACES_PATH = ROOT / "data" / "wilkowice_places.json"
 OLX_HOST = "www.olx.pl"
 LOG = logging.getLogger("iphone_sniper")
@@ -93,21 +93,25 @@ def load_config() -> dict[str, Any]:
             raise ValueError("Niepoprawne ceny.")
         if type(remote.get("enabled")) is not bool:
             raise ValueError("Niepoprawny stan monitorowania.")
-        query = {"search[dist]": radius, "search[order]": "created_at:desc", "search[filter_float_price:from]": minimum}
+        nationwide = remote.get("nationwide") is True
+        area_path = "" if nationwide else slug + "/"
+        query = { "search[order]": "created_at:desc", "search[filter_float_price:from]": minimum}
+        if not nationwide:
+            query["search[dist]"] = radius
         if maximum is not None:
             query["search[filter_float_price:to]"] = maximum
         families = list(dict.fromkeys(m.split()[0] for m in models))
         config["searches"] = [{"name": f"iPhone {n} · {city} +{radius} km", "source": "rss",
-            "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone-{n}/?" + urlencode(query)} for n in families]
+            "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone-{n}/?" + urlencode(query)} for n in families]
         # Additional first-page search catches titles missed by family searches.
         config["searches"].append({"name": f"iPhone · {city} +{radius} km", "source":"rss",
-            "url": f"https://www.olx.pl/elektronika/telefony/{slug}/q-iphone/?" + urlencode(query)})
+            "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone/?" + urlencode(query)})
         config["model_ids"] = models
         config["price_min"] = minimum
         config["price_max"] = maximum
-        config["area_city"] = city
-        config["area_radius"] = radius
-        config["enabled"] = remote["enabled"]
+        config["area_city"] = None if nationwide else city
+        config["area_radius"] = None if nationwide else radius
+        config["enabled"] = remote["enabled"] and remote.get("profile_available", True)
     config["include_damaged"] = bool(os.getenv("DISCORD_DAMAGED_WEBHOOK_URL", "").strip())
     searches = config.get("searches", [])
     if not searches:
@@ -647,7 +651,12 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
              "footer":{"text":"TEST — to nie jest oferta" if testing else "iPhone Sniper • Zysk bez napraw, prowizji i transportu • Opóźnienie publikacji w RSS nieznane"}}
     if listing.image_url:
         embed["image"] = {"url":listing.image_url}
-    response = requests.post(webhook_url, params={"with_components":"true"}, json={"content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
+    headers = {}
+    settings_origin = urlsplit(os.getenv("SETTINGS_URL", ""))
+    destination = urlsplit(webhook_url)
+    if destination.path == "/relay/polska" and destination.scheme == "https" and destination.netloc == settings_origin.netloc:
+        headers["Authorization"] = "Bearer " + os.getenv("SETTINGS_KEY", "")
+    response = requests.post(webhook_url, headers=headers, params={"with_components":"true"}, json={"content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
     response.raise_for_status()
 
 
@@ -893,7 +902,7 @@ def publish_status(report: dict[str, Any]) -> None:
         return
     try:
         endpoint = urlunsplit((*urlsplit(settings_url)[:2], "/health", "", ""))
-        response = requests.post(endpoint, headers={"Authorization": "Bearer " + key}, json=report, timeout=8)
+        response = requests.post(endpoint, params={"profile":"polska"} if os.getenv("ALERT_PROFILE") == "polska" else {}, headers={"Authorization": "Bearer " + key}, json=report, timeout=8)
         response.raise_for_status()
     except requests.RequestException:
         LOG.warning("Nie można zapisać statusu. Wynik skanowania pozostaje bez zmian.")

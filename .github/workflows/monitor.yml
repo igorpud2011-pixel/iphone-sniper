@@ -84,7 +84,7 @@ jobs:
             last_code=0
             while [ "$SECONDS" -lt "$deadline" ]; do
               started=$SECONDS
-              if python bot.py; then
+              if python run_profiles.py; then
                 last_code=0
               else
                 last_code=$?
@@ -93,10 +93,10 @@ jobs:
               # Detect source changes before a state push can pull them locally.
               git fetch origin main --quiet
               source_changed=false
-              if ! git diff --quiet HEAD origin/main -- . ':!data/seen.json'; then
+              if ! git diff --quiet HEAD origin/main -- . ':!data/seen.json' ':!data/seen-polska.json'; then
                 source_changed=true
               fi
-              git add data/seen.json
+              git add data/seen*.json
               if ! git diff --cached --quiet; then
                 git commit -m "Aktualizacja zapisanych ofert"
                 git pull --rebase origin main
@@ -115,7 +115,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/seen.json
+          git add data/seen*.json
           if ! git diff --cached --quiet; then
             git commit -m "Aktualizacja zapisanych ofert"
             git pull --rebase origin main

@@ -101,3 +101,13 @@ test('offer form is local only and preserves private settings authorization',asy
  assert.doesNotMatch(html,/localStorage|fetch\(/);
  assert.equal((await worker.fetch(new Request('https://example.com/settings'),{},{})).status,401);
 });
+test('national settings clone local filters once and remain independent',async()=>{
+ const db=new Map([['settings',{...state,min:100}]]);const env={SETTINGS_KEY:'key',DISCORD_NATIONAL_WEBHOOK_URL:'configured',SETTINGS:{get:async k=>db.get(k),put:async(k,v)=>db.set(k,JSON.parse(v))}};
+ const request=()=>new Request('https://example.com/settings?profile=polska',{headers:{Authorization:'Bearer key'}});
+ const initial=await (await worker.fetch(request(),env,{})).json();assert.equal(initial.nationwide,true);assert.equal(initial.city,'Cała Polska');assert.equal(initial.min,100);
+ db.get('settings').min=999;assert.equal((await (await worker.fetch(request(),env,{})).json()).min,100);assert.equal(db.get('settings').city,'Bielsko-Biała');
+});
+test('relay requires correct scoped token and rejects malformed reply data',async()=>{
+ assert.equal((await worker.fetch(new Request('https://example.com/reply-ingest',{method:'POST',body:'{}'}),{REPLY_CLIENT_TOKEN:'reply'},{})).status,401);
+ assert.equal((await worker.fetch(new Request('https://example.com/reply-ingest',{method:'POST',headers:{Authorization:'Bearer reply'},body:JSON.stringify({url:'https://evil.test',message:'tak',eventId:'abcdefgh'})}),{REPLY_CLIENT_TOKEN:'reply'},{})).status,400);
+});
