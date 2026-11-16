@@ -16,6 +16,7 @@ import time
 import unicodedata
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
+from decimal import Decimal
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from functools import lru_cache
@@ -50,6 +51,7 @@ class Listing:
     location_name: str = ""
     detected_at: int = 0
     fetch_seconds: float | None = None
+    description: str = ""
 
 
 def load_config() -> dict[str, Any]:
@@ -134,6 +136,9 @@ def load_state() -> dict[str, Any]:
         for key in ("seen_ids", "notified_ids", "rejected_ids", "bootstrap_searches", "initialized_searches"):
             if key in state and (not isinstance(state[key], list) or any(not isinstance(x, str) for x in state[key])):
                 raise ValueError("Nieprawidłowy format historii")
+        receipts = state.get("route_receipts", {})
+        if not isinstance(receipts, dict) or any(not isinstance(k, str) or not isinstance(v, list) or any(not isinstance(x, str) for x in v) for k,v in receipts.items()):
+            raise ValueError("Nieprawidłowa historia dostarczeń")
         return state
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         # Never silently replace an existing history with a fresh baseline:
@@ -380,7 +385,12 @@ def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
         if urlsplit(image_url).scheme != "https":
             image_url = ""
         url = canonical_url(link)
-        listings.append(Listing(stable_id(url), title, url, price, location, image_url, source_name, location_name))
+        listing = Listing(stable_id(url), title, url, price, location, image_url, source_name, location_name)
+        cells = detail.select("td")
+        if len(cells) > 1:
+            description = _text(cells[-1])
+            listing.description = re.sub(r"^Opis\s*", "", description)[:4000]
+        listings.append(listing)
     if root.findall("./channel/item") and not listings:
         raise RuntimeError("RSS zawiera wpisy, ale parser nie rozpoznaje ofert.")
     return listings
@@ -553,6 +563,12 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     price_match = re.search(r"[\d][\d \u00a0\u202f]*(?:[,.]\d{1,2})?\s*zł", listing.price, flags=re.IGNORECASE)
     asking = price_match.group().strip() if price_match else listing.price[:100]
     body = ["🏷️ **Zakup:** **" + asking + "**", *prices]
+    if is_damaged(listing):
+        body.append("🔧 **Usterka:** wykryto wzmiankę w tytule lub opisie.")
+    else:
+        discount = deal_discount(listing)
+        if discount is not None and discount >= 100:
+            body.append(f"💎 **Poniżej cennika:** **{discount:g} zł**")
     if notes:
         body.append("\n" + "\n".join(notes))
     location = f"📍 {place}"
@@ -624,8 +640,10 @@ def send_alert(listing: Listing, timeout: int) -> bool:
 
 
 def is_damaged(listing: Listing) -> bool:
-    title = normalize_phone_title(listing.title).casefold()
-    return bool(re.search(r"\b(?:uszkodzon\w*|niesprawn\w*|zbit\w*|pęknięt\w*|pekniet\w*|rozbit\w*|zalan\w*)\b|nie (?:działa|dziala|włącza|wlacza)|(?:brak|bez) face\s*id", title))
+    text = normalize_phone_title(listing.title + " " + listing.description).casefold()
+    # Remove explicit denials without hiding a separate real fault later in the text.
+    text = re.sub(r"\bnie\s+(?:jest\s+)?(?:uszkodzon\w*|zalan\w*|zbit\w*|pęknięt\w*|pekniet\w*)\b|\bbez\s+(?:uszkodzeń|uszkodzen|pęknięć|pekniec)\b", " ", text)
+    return bool(re.search(r"\b(?:uszkodzon\w*|niesprawn\w*|zbit\w*|pęknięt\w*|pekniet\w*|rozbit\w*|zalan\w*)\b|nie (?:działa|dziala|włącza|wlacza|ładuje|laduje|uruchamia)|(?:brak|bez) face\s*id|brak obrazu|do naprawy", text))
 
 
 def deal_discount(listing: Listing) -> float | None:
@@ -643,8 +661,8 @@ def deal_discount(listing: Listing) -> float | None:
     price = re.search(r"(?<![\d.,])(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:zł|pln)", listing.price, flags=re.I)
     if not rows or any(r['suspect'] for r in rows) or not price:
         return None
-    asking = float(re.sub(r"\s", "", price[1]).replace(',', '.'))
-    return min(r['sale_price'] for r in rows) - asking
+    asking = Decimal(re.sub(r"\s", "", price[1]).replace(',', '.'))
+    return float(Decimal(str(min(r['sale_price'] for r in rows))) - asking)
 
 
 def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> bool:
