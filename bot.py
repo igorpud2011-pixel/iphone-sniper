@@ -148,7 +148,8 @@ def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
                "initialized_searches": state.get("initialized_searches", []),
                "bootstrap_searches": state.get("bootstrap_searches", []),
                "notified_ids": state.get("notified_ids", [])[-max_seen:],
-               "rejected_ids": state.get("rejected_ids", [])[-max_seen:], "id_format_version": 2}
+               "rejected_ids": state.get("rejected_ids", [])[-max_seen:],
+               "route_receipts": state.get("route_receipts", {}), "id_format_version": 2}
     tmp = STATE_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -621,6 +622,63 @@ def send_alert(listing: Listing, timeout: int) -> bool:
     return all(results)
 
 
+
+def is_damaged(listing: Listing) -> bool:
+    title = normalize_phone_title(listing.title).casefold()
+    return bool(re.search(r"\b(?:uszkodzon\w*|niesprawn\w*|zbit\w*|pęknięt\w*|pekniet\w*|rozbit\w*|zalan\w*)\b|nie (?:działa|dziala|włącza|wlacza)|(?:brak|bez) face\s*id", title))
+
+
+def deal_discount(listing: Listing) -> float | None:
+    if is_damaged(listing):
+        return None
+    try:
+        table = resale_table()
+    except (OSError, ValueError):
+        return None
+    title = re.sub(r"(?<=\d)(?=(?:32|64|128|256|512|1024|2048)\s*GB\b)", " ", listing.title, flags=re.I)
+    capacities = {int(n)*(1024 if unit.lower() == 'tb' else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", title, flags=re.I)}
+    if len(capacities) != 1:
+        return None
+    rows = [r for r in table['rows'] if r['model'] == detect_model(listing.title) and r['storage_gb'] == next(iter(capacities))]
+    price = re.search(r"(?<![\d.,])(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:zł|pln)", listing.price, flags=re.I)
+    if not rows or any(r['suspect'] for r in rows) or not price:
+        return None
+    asking = float(re.sub(r"\s", "", price[1]).replace(',', '.'))
+    return min(r['sale_price'] for r in rows) - asking
+
+
+def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> bool:
+    # Store only hashes of destinations, never webhook secrets, in public state.
+    receipts = state.setdefault('route_receipts', {}).setdefault(listing.listing_id, [])
+    base = '|'.join(os.getenv(key, '') for key in ('DISCORD_WEBHOOK_URL','TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID'))
+    base_id = 'base:' + hashlib.sha256(base.encode()).hexdigest()[:20]
+    success = True
+    if base_id not in receipts:
+        if send_alert(listing, timeout):
+            receipts.append(base_id)
+        else:
+            success = False
+    target = ''
+    if is_damaged(listing):
+        target = os.getenv('DISCORD_DAMAGED_WEBHOOK_URL', '').strip()
+    else:
+        discount = deal_discount(listing)
+        if discount is not None and discount >= 100:
+            target = os.getenv('DISCORD_DEALS_WEBHOOK_URL', '').strip()
+    if target and target != os.getenv('DISCORD_WEBHOOK_URL', '').strip():
+        target_id = 'discord:' + hashlib.sha256(target.encode()).hexdigest()[:20]
+        if target_id not in receipts:
+            try:
+                send_discord(target, listing, timeout)
+                receipts.append(target_id)
+            except Exception as exc:
+                LOG.error('Dodatkowy kanał: %s', type(exc).__name__)
+                success = False
+    if success:
+        state['route_receipts'].pop(listing.listing_id, None)
+    return success
+
+
 def _scan_once(report: dict[str, Any]) -> int:
     config = load_config()
     if not config.get("enabled", True):
@@ -702,12 +760,14 @@ def _scan_once(report: dict[str, Any]) -> int:
                         found.append(listing)
                         # Deliver while slower providers are still being fetched.
                         try:
-                            if send_alert(listing, int(config.get("request_timeout_seconds", 20))):
+                            if send_routed_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
                                 successfully_notified.add(listing.listing_id)
                                 checkpoint()
                                 LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
                         except Exception as exc:
                             LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
+                        finally:
+                            checkpoint()
                     else:
                         rejected.add(listing.listing_id)
             except Exception as exc:
