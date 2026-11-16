@@ -25,8 +25,24 @@ jobs:
           import bot
           table = bot.resale_table()
           assert table.get('rows'), 'Prywatny cennik nie jest dostępny.'
-          sample = bot.Listing('pricing-test', 'TEST: iPhone 11 64GB — to nie jest oferta', 'https://www.olx.pl/', price='200 zł (przykładowy zakup)', source='Test prywatnego cennika')
+          sample = bot.Listing('pricing-test', 'TEST: iPhone 11 64GB — to nie jest oferta', 'https://www.olx.pl/d/oferta/test-iphone-sniper-IDTEST.html', price='200 zł (przykładowy zakup)', source='Test prywatnego cennika')
           assert 'Zysk przed kosztami' in bot.resale_estimate(sample), 'Nie udało się obliczyć przykładu.'
-          bot.send_discord(os.environ['DISCORD_WEBHOOK_URL'], sample, 20)
-          print('Prywatny cennik odczytany; Discord potwierdził wiadomość testową.')
+          from unittest.mock import patch
+          original_post = bot.requests.post
+          responses = []
+          def confirmed_post(url, **kwargs):
+              kwargs.setdefault('params', {})['wait'] = 'true'
+              response = original_post(url, **kwargs)
+              responses.append(response)
+              return response
+          with patch.object(bot.requests, 'post', side_effect=confirmed_post):
+              bot.send_discord(os.environ['DISCORD_WEBHOOK_URL'], sample, 20)
+          receipt = responses[-1].json()
+          buttons = receipt.get('components', [{}])[0].get('components', [])
+          assert len(buttons) == 2, 'Discord nie zapisał przycisków.'
+          assert '/offer#' in buttons[0]['url'], 'Brak formularza propozycji.'
+          from urllib.parse import urlsplit, parse_qs
+          fragment = parse_qs(urlsplit(buttons[0]['url']).fragment)
+          assert fragment['price'][0] == bot.suggested_offer(sample), 'Kwota propozycji nie zgadza się z tabelą minus 200.'
+          print('Prywatny cennik odczytany; Discord potwierdził wiadomość testową i oba przyciski.')
           PY
