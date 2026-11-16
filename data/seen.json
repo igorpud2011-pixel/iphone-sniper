@@ -505,5 +505,13 @@
     "IDYYVB2"
   ],
   "route_receipts": {},
+  "secondary_delivered": {
+    "ID1DHXRI": [
+      "discord:7f9f3e346e4cdccee8e5"
+    ],
+    "ID1DHSLM": [
+      "discord:7f9f3e346e4cdccee8e5"
+    ]
+  },
   "id_format_version": 2
 }
