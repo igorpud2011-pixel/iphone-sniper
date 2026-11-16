@@ -105,6 +105,7 @@ def load_config() -> dict[str, Any]:
         config["area_city"] = city
         config["area_radius"] = radius
         config["enabled"] = remote["enabled"]
+    config["include_damaged"] = bool(os.getenv("DISCORD_DAMAGED_WEBHOOK_URL", "").strip())
     searches = config.get("searches", [])
     if not searches:
         raise ValueError("config.json nie zawiera żadnych wyszukiwań.")
@@ -154,7 +155,8 @@ def save_state(state: dict[str, Any], max_seen: int = 12000) -> None:
                "bootstrap_searches": state.get("bootstrap_searches", []),
                "notified_ids": state.get("notified_ids", [])[-max_seen:],
                "rejected_ids": state.get("rejected_ids", [])[-max_seen:],
-               "route_receipts": state.get("route_receipts", {}), "id_format_version": 2}
+               "route_receipts": state.get("route_receipts", {}),
+               "secondary_delivered": dict(list(state.get("secondary_delivered", {}).items())[-max_seen:]), "id_format_version": 2}
     tmp = STATE_PATH.with_suffix(".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -455,6 +457,8 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
         if amount < minimum or (maximum is not None and amount > maximum):
             return False
     exclude_words = config.get("exclude_title_words", [])
+    if config.get("include_damaged") and is_damaged(listing):
+        exclude_words = [word for word in exclude_words if word.casefold() not in {"na części", "na czesci"}]
     prefix = title.split("iphone", 1)[0]
     # Accessories at the start are standalone products. A phone bundled with
     # an etui/cable remains a valid phone listing.
@@ -643,7 +647,7 @@ def is_damaged(listing: Listing) -> bool:
     text = normalize_phone_title(listing.title + " " + listing.description).casefold()
     # Remove explicit denials without hiding a separate real fault later in the text.
     text = re.sub(r"\bnie\s+(?:(?:jest|był|byl|była|byla|było|bylo)\s+)?(?:uszkodzon\w*|zalan\w*|zbit\w*|pęknięt\w*|pekniet\w*)\b|\bbez\s+(?:uszkodzeń|uszkodzen|pęknięć|pekniec)\b", " ", text)
-    return bool(re.search(r"\b(?:uszkodzon\w*|niesprawn\w*|zbit\w*|pęknięt\w*|pekniet\w*|rozbit\w*|zalan\w*)\b|nie (?:działa|dziala|włącza|wlacza|ładuje|laduje|uruchamia)|(?:brak|bez) face\s*id|brak obrazu|do naprawy", text))
+    return bool(re.search(r"\b(?:uszkodzon\w*|niesprawn\w*|zbit\w*|pęknięt\w*|pekniet\w*|rozbit\w*|zalan\w*)\b|nie (?:działa|dziala|włącza|wlacza|ładuje|laduje|uruchamia)|(?:brak|bez) face\s*id|brak obrazu|do naprawy|na (?:części|czesci)", text))
 
 
 def deal_discount(listing: Listing) -> float | None:
@@ -665,17 +669,9 @@ def deal_discount(listing: Listing) -> float | None:
     return float(Decimal(str(min(r['sale_price'] for r in rows))) - asking)
 
 
-def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> bool:
-    # Store only hashes of destinations, never webhook secrets, in public state.
-    receipts = state.setdefault('route_receipts', {}).setdefault(listing.listing_id, [])
-    base = '|'.join(os.getenv(key, '') for key in ('DISCORD_WEBHOOK_URL','TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID'))
-    base_id = 'base:' + hashlib.sha256(base.encode()).hexdigest()[:20]
+def send_secondary_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> bool:
+    receipts = state.setdefault('secondary_delivered', {}).setdefault(listing.listing_id, [])
     success = True
-    if base_id not in receipts:
-        if send_alert(listing, timeout):
-            receipts.append(base_id)
-        else:
-            success = False
     target = ''
     if is_damaged(listing):
         target = os.getenv('DISCORD_DAMAGED_WEBHOOK_URL', '').strip()
@@ -689,9 +685,28 @@ def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> 
             try:
                 send_discord(target, listing, timeout)
                 receipts.append(target_id)
+                LOG.info("Potwierdzono kanał %s dla %s.", "uszkodzone" if is_damaged(listing) else "okazje", listing.listing_id)
             except Exception as exc:
                 LOG.error('Dodatkowy kanał: %s', type(exc).__name__)
                 success = False
+    if not receipts:
+        state['secondary_delivered'].pop(listing.listing_id, None)
+    return success
+
+
+def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> bool:
+    # Store only hashes of destinations, never webhook secrets, in public state.
+    receipts = state.setdefault('route_receipts', {}).setdefault(listing.listing_id, [])
+    base = '|'.join(os.getenv(key, '') for key in ('DISCORD_WEBHOOK_URL','TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID'))
+    base_id = 'base:' + hashlib.sha256(base.encode()).hexdigest()[:20]
+    success = True
+    if base_id not in receipts:
+        if send_alert(listing, timeout):
+            receipts.append(base_id)
+        else:
+            success = False
+    if not send_secondary_alert(listing, timeout, state):
+        success = False
     if success:
         state['route_receipts'].pop(listing.listing_id, None)
     return success
@@ -766,8 +781,20 @@ def _scan_once(report: dict[str, Any]) -> int:
                 LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtr tytułu.",
                          sum(x.listing_id in seen for x in listings),
                          sum(not is_flip_candidate(x, config) for x in listings))
+                candidates = [item for item in listings if is_flip_candidate(item, config)]
+                LOG.info("Klasyfikacja źródła: %d pasujących; %d uszkodzonych; %d okazji >=100 zł.",
+                    len(candidates), sum(is_damaged(item) for item in candidates),
+                    sum((deal_discount(item) or 0) >= 100 for item in candidates))
                 for listing in listings:
                     if listing.listing_id in seen:
+                        # A later provider may supply a description missing on first detection.
+                        # Recheck only ads actually delivered to the main channel, not baseline ads.
+                        if listing.listing_id in state.get("notified_ids", []) and is_flip_candidate(listing, config):
+                            before = json.dumps(state.get("secondary_delivered", {}), sort_keys=True)
+                            if not send_secondary_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
+                                report["errors"].append("Nie dostarczono dodatkowego alertu; ponowię.")
+                            if before != json.dumps(state.get("secondary_delivered", {}), sort_keys=True):
+                                checkpoint()
                         continue
                     fresh_ids.append(listing.listing_id)
                     if bootstrap:
@@ -804,7 +831,7 @@ def _scan_once(report: dict[str, Any]) -> int:
         report["errors"].append("Nie wszystkie alerty zostały dostarczone; bot ponowi wysyłkę.")
     checkpoint()
     LOG.info("Koniec sprawdzania. Nowe oferty pasujące do iPhone'ów: %d; wysłane alerty: %d.", len(found), len(successfully_notified))
-    return 0 if len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
+    return 0 if not report["errors"] and len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
 
 
 def publish_status(report: dict[str, Any]) -> None:
