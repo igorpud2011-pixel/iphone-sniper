@@ -66,6 +66,8 @@ jobs:
           SESSION_MINUTES: ${{ inputs.session_minutes || 300 }}
           TEST_DISCORD: ${{ inputs.test_discord }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_DAMAGED_WEBHOOK_URL: ${{ secrets.DISCORD_DAMAGED_WEBHOOK_URL }}
+          DISCORD_DEALS_WEBHOOK_URL: ${{ secrets.DISCORD_DEALS_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
