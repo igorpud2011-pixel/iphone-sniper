@@ -5,7 +5,7 @@ import bot
 
 class RoutingAuditTests(unittest.TestCase):
     def test_negations_and_separate_actual_fault(self):
-        for title in ['iPhone 13 nie uszkodzony','iPhone 13 nie jest zalany','iPhone 13 bez uszkodzeń']:
+        for title in ['iPhone 13 nie uszkodzony','iPhone 13 nie jest zalany','iPhone 13 bez uszkodzeń','iPhone 13 nigdy nie był zalany']:
             self.assertFalse(bot.is_damaged(bot.Listing('x',title,'')))
         ad=bot.Listing('x','iPhone 13 nie zalany','',description='Nie działa Face ID.')
         self.assertTrue(bot.is_damaged(ad))
