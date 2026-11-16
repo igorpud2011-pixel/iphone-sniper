@@ -1,0 +1,46 @@
+name: Test dodatkowych kanałów
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/channel-check.yml]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Sprawdź kanały i wyślij oznaczone testy
+        env:
+          DEALS: ${{ secrets.DISCORD_DEALS_WEBHOOK_URL }}
+          DAMAGED: ${{ secrets.DISCORD_DAMAGED_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          targets=[('DEALS','💰 TEST: okazje od 100 zł'),('DAMAGED','🔧 TEST: uszkodzone iPhone’y')]
+          channels=[]; guilds=[]
+          def call(url,body=None):
+              data=None if body is None else json.dumps(body).encode()
+              req=urllib.request.Request(url,data=data,headers={'Content-Type':'application/json','User-Agent':'iPhoneSniper/1.0'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  return r.status, r.read()
+          for key,label in targets:
+              url=os.environ.get(key,'').strip()
+              if not url: raise RuntimeError('Brak sekretu '+key)
+              try:
+                  status,raw=call(url)
+                  metadata=json.loads(raw)
+                  channels.append(metadata['channel_id']);guilds.append(metadata['guild_id'])
+              except Exception:
+                  raise RuntimeError('Nie można potwierdzić kanału '+key) from None
+          assert len(set(channels))==2, 'Webhooki prowadzą do tego samego kanału.'
+          assert len(set(guilds))==1, 'Webhooki prowadzą do różnych serwerów.'
+          for key,label in targets:
+              body={'content':'','embeds':[{'title':label,'description':'Połączenie działa. To wiadomość testowa, nie oferta.','color':3066993}],'allowed_mentions':{'parse':[]}}
+              try:
+                  status,_=call(os.environ[key],body)
+                  assert status in (200,204)
+              except Exception:
+                  raise RuntimeError('Nie potwierdzono dostarczenia testu '+key) from None
+              print(key+': Discord potwierdził wiadomość testową.')
+          PY
