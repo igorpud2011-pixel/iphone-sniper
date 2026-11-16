@@ -28,7 +28,7 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 MODEL_IDS = ['duo', '18 pro max', '18 pro', '17 pro max', '17 pro', '17', '17e', 'air', '16 pro max', '16 pro', '16 plus', '16', '16e', '15 pro max', '15 pro', '15 plus', '15', '14 pro max', '14 pro', '14 plus', '14', '13 pro max', '13 pro', '13 mini', '13', '12 pro max', '12 pro', '12 mini', '12', '11 pro max', '11 pro', '11', 'xs max', 'xs', 'xr', 'x', 'se 2022', 'se 2020', 'se 2016', 'se', '8 plus', '8', '7 plus', '7', '6s plus', '6s', '6 plus', '6', '5s', '5c', '5', '4s', '4', '3gs', '3g', '2g']
 
@@ -211,7 +211,7 @@ def detect_model(title: str) -> str | None:
         return "se"
     for model in sorted(MODEL_IDS, key=len, reverse=True):
         pattern = re.escape(model).replace(r"\ ", r"\s*")
-        if re.match(pattern + r"(?:(?![a-z0-9])|(?=(?:32|64|128|256|512|1024|2048)gb\b))", rest):
+        if re.match(pattern + r"(?:(?![a-z0-9])|(?=(?:(?:32|64|128|256|512|1024|2048)gb|[12]tb)\b))", rest):
             return model
     return None
 
@@ -552,6 +552,35 @@ def resale_estimate(listing: Listing) -> str:
     return result + "\nCennik: " + table["date"] + "; bez napraw, prowizji i transportu."
 
 
+def suggested_offer(listing: Listing) -> str:
+    """Exact private resale variant minus 200 PLN; never guess unknown memory."""
+    try:
+        table = resale_table()
+    except (OSError, ValueError):
+        return ""
+    title = re.sub(r"(?<=\d)(?=(?:32|64|128|256|512|1024|2048)\s*GB\b|[12]\s*TB\b)", " ", listing.title, flags=re.I)
+    capacities = {int(n)*(1024 if unit.lower() == "tb" else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", title, flags=re.I)}
+    if len(capacities) != 1:
+        return ""
+    rows = [r for r in table["rows"] if r["model"] == detect_model(listing.title) and r["storage_gb"] == next(iter(capacities))]
+    if not rows or any(r["suspect"] for r in rows):
+        return ""
+    amount = Decimal(str(min(r["sale_price"] for r in rows))) - Decimal(200)
+    return format(amount, "f") if 0 < amount <= 100000 else ""
+
+
+def offer_components(listing: Listing) -> list[dict[str, Any]]:
+    parsed = urlsplit(listing.url)
+    if parsed.scheme != "https" or parsed.netloc not in {"www.olx.pl", "olx.pl"} or not parsed.path.startswith("/d/oferta/"):
+        return []
+    # URL fragments stay in the browser, out of server requests and referrers.
+    origin = "https://iphone-sniper-control-igor.splendidtapioca8.chatgpt.site"
+    fragment = urlencode({"url": urlunsplit(("https", "www.olx.pl", parsed.path, "", "")), "price": suggested_offer(listing)})
+    return [{"type":1,"components":[
+        {"type":2,"style":5,"label":"💬 Zaproponuj cenę","url":origin+"/offer#"+fragment},
+        {"type":2,"style":5,"label":"Otwórz OLX","url":listing.url}]}]
+
+
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     place = listing.location_name or extract_location(listing.location_date)[0] or "Nie podano"
     distance = distance_from_wilkowice(place)
@@ -603,7 +632,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
              "footer":{"text":"TEST — to nie jest oferta" if testing else "iPhone Sniper • Zysk bez napraw, prowizji i transportu • Opóźnienie publikacji w RSS nieznane"}}
     if listing.image_url:
         embed["image"] = {"url":listing.image_url}
-    response = requests.post(webhook_url, json={"content":"", "embeds":[embed], "allowed_mentions":{"parse":[]}}, timeout=timeout)
+    response = requests.post(webhook_url, params={"with_components":"true"}, json={"content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
     response.raise_for_status()
 
 

@@ -89,3 +89,15 @@ test('status reports are authenticated and preserve last success after failures'
  assert.match(statusPanel(db.get('health'),{enabled:true},t).embeds[0].description,/Błąd/);
  assert.match(statusPanel(db.get('health'),{enabled:true},t+600).embeds[0].description,/Brak świeżego/);
 });
+test('offer form is local only and preserves private settings authorization',async()=>{
+ const response=await worker.fetch(new Request('https://example.com/offer'),{},{});
+ assert.equal(response.status,200);
+ assert.match(response.headers.get('Content-Security-Policy'),/connect-src 'none'/);
+ assert.equal(response.headers.get('Referrer-Policy'),'no-referrer');
+ const html=await response.text();
+ assert.match(html,/location.hash/);
+ assert.match(html,/navigator.clipboard.writeText/);
+ assert.match(html,/minus 200 zł/);
+ assert.doesNotMatch(html,/localStorage|fetch\(/);
+ assert.equal((await worker.fetch(new Request('https://example.com/settings'),{},{})).status,401);
+});

@@ -1,3 +1,4 @@
+import offerPage from './offer-page.mjs';
 export const MODEL_IDS=["duo", "18 pro max", "18 pro", "17 pro max", "17 pro", "17", "17e", "air", "16 pro max", "16 pro", "16 plus", "16", "16e", "15 pro max", "15 pro", "15 plus", "15", "14 pro max", "14 pro", "14 plus", "14", "13 pro max", "13 pro", "13 mini", "13", "12 pro max", "12 pro", "12 mini", "12", "11 pro max", "11 pro", "11", "xs max", "xs", "xr", "x", "se 2022", "se 2020", "se 2016", "se", "8 plus", "8", "7 plus", "7", "6s plus", "6s", "6 plus", "6", "5s", "5c", "5", "4s", "4", "3gs", "3g", "2g"];
 export const expandModels = models => [...new Set(models.flatMap(n=>typeof n==='number'?MODEL_IDS.filter(m=>m.split(' ')[0]===String(n)):[String(n).toLowerCase()]))].filter(m=>MODEL_IDS.includes(m));
 const normalizeSettings = s => ({...s,models:expandModels(s.models)});
@@ -65,6 +66,8 @@ export function change(current,name,options={}){
  return s;
 }
 export default {async fetch(request,env,ctx){
+ if(new URL(request.url).pathname==='/offer'&&request.method==='GET')return new Response(offerPage,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"}});
+
  const url=new URL(request.url);
  if(url.pathname==='/health'&&request.method==='POST'){
   if(!env.SETTINGS_KEY||request.headers.get('Authorization')!==`Bearer ${env.SETTINGS_KEY}`)return json({error:'Unauthorized'},401);
