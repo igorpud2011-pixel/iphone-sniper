@@ -642,7 +642,7 @@ def send_alert(listing: Listing, timeout: int) -> bool:
 def is_damaged(listing: Listing) -> bool:
     text = normalize_phone_title(listing.title + " " + listing.description).casefold()
     # Remove explicit denials without hiding a separate real fault later in the text.
-    text = re.sub(r"\bnie\s+(?:jest\s+)?(?:uszkodzon\w*|zalan\w*|zbit\w*|pęknięt\w*|pekniet\w*)\b|\bbez\s+(?:uszkodzeń|uszkodzen|pęknięć|pekniec)\b", " ", text)
+    text = re.sub(r"\bnie\s+(?:(?:jest|był|byl|była|byla|było|bylo)\s+)?(?:uszkodzon\w*|zalan\w*|zbit\w*|pęknięt\w*|pekniet\w*)\b|\bbez\s+(?:uszkodzeń|uszkodzen|pęknięć|pekniec)\b", " ", text)
     return bool(re.search(r"\b(?:uszkodzon\w*|niesprawn\w*|zbit\w*|pęknięt\w*|pekniet\w*|rozbit\w*|zalan\w*)\b|nie (?:działa|dziala|włącza|wlacza|ładuje|laduje|uruchamia)|(?:brak|bez) face\s*id|brak obrazu|do naprawy", text))
 
 
