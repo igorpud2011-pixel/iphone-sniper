@@ -22,13 +22,13 @@ from zoneinfo import ZoneInfo
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlsplit, urlunsplit, urlencode
+from urllib.parse import urljoin, urlsplit, urlunsplit, urlencode, parse_qsl
 
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 MODEL_IDS = ['duo', '18 pro max', '18 pro', '17 pro max', '17 pro', '17', '17e', 'air', '16 pro max', '16 pro', '16 plus', '16', '16e', '15 pro max', '15 pro', '15 plus', '15', '14 pro max', '14 pro', '14 plus', '14', '13 pro max', '13 pro', '13 mini', '13', '12 pro max', '12 pro', '12 mini', '12', '11 pro max', '11 pro', '11', 'xs max', 'xs', 'xr', 'x', 'se 2022', 'se 2020', 'se 2016', 'se', '8 plus', '8', '7 plus', '7', '6s plus', '6s', '6 plus', '6', '5s', '5c', '5', '4s', '4', '3gs', '3g', '2g']
 
@@ -54,6 +54,7 @@ class Listing:
     detected_at: int = 0
     fetch_seconds: float | None = None
     description: str = ""
+    seller_type: str = "unknown"
 
 
 def load_config() -> dict[str, Any]:
@@ -116,6 +117,13 @@ def load_config() -> dict[str, Any]:
         host = urlsplit(url).hostname or ""
         if host not in {OLX_HOST, "olx.pl"}:
             raise ValueError(f"Dozwolone są tylko adresy OLX.pl. Nieprawidłowy adres: {url}")
+    # Preserve the private-seller constraint for static, remote and supplementary searches.
+    for search in searches:
+        parts = urlsplit(search["url"])
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        query["search[private_business]"] = "private"
+        search["url"] = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+    config["private_only"] = True
     # One broad independent feed supplements the existing family feeds.
     # Keep a single request per scan: RSS-Bridge may crawl detail pages on cache miss.
     primary = [search for search in searches if search.get("source") == "rss"]
@@ -397,6 +405,8 @@ def parse_rss(payload: str, source_name: str = "OLX RSS") -> list[Listing]:
         if len(cells) > 1:
             description = _text(cells[-1])
             listing.description = re.sub(r"^Opis\s*", "", description)[:4000]
+        labels = {text.casefold().strip() for text in detail.stripped_strings}
+        listing.seller_type = "business" if labels & {"firmowe", "firma", "sprzedawca: firma"} else "private" if "prywatne" in labels else "unknown"
         listings.append(listing)
     if root.findall("./channel/item") and not listings:
         raise RuntimeError("RSS zawiera wpisy, ale parser nie rozpoznaje ofert.")
@@ -433,6 +443,11 @@ def fetch_search(session: requests.Session, search: dict[str, str], timeout: int
 
 def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     title = normalize_phone_title(listing.title).casefold()
+    if listing.seller_type == "business":
+        return False
+    # Buying advertisements are not phones offered for sale, even on private accounts.
+    if re.search(r"\b(?:skup|skupujemy|skupuje|skupuję|kupimy|odkupię|odkupie)\b", title):
+        return False
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
