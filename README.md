@@ -115,3 +115,11 @@ Testy lokalne i GitHub Actions obejmują parsery, filtry, zmianę ustawień, awa
 Dotychczasowy kanał otrzymuje wszystkie pasujące oferty. Opcjonalne sekrety `DISCORD_DAMAGED_WEBHOOK_URL` oraz `DISCORD_DEALS_WEBHOOK_URL` kierują dodatkowe kopie odpowiednio na kanał uszkodzonych i okazji. Bez tych sekretów dodatkowa wysyłka jest nieaktywna. Webhooków nie należy umieszczać w plikach repozytorium.
 
 Uszkodzenia są rozpoznawane z tytułu oferty, więc nie obejmuje to usterek opisanych wyłącznie w treści lub na zdjęciach. Okazja wymaga dokładnego modelu i pamięci oraz ceny co najmniej 100 zł poniżej najniższej niespornej ceny tego wariantu w prywatnej tabeli. Oferty rozpoznane jako uszkodzone nie trafiają do okazji. Różnica cen jest liczona przed kosztami. Historię częściowo dostarczonych alertów zapisuje się według skrótów adresów kanałów, bez zapisywania webhooków.
+
+## Wydanie 1.0.0
+
+Kanał główny oraz osobne kanały uszkodzonych i okazji działają ze wspólnym skanerem i niezależną historią dodatkowych dostarczeń. Znane oferty są ponownie oceniane dla dodatkowych kanałów po otrzymaniu pełniejszych danych. Status liczy także potwierdzone wysyłki na dodatkowe kanały. Model i miejscowość są buforowane w pamięci pojedynczego skanu, a filtry każdej kopii oferty oceniane raz.
+
+Próg okazji wynosi minimum 100 zł względem prywatnego cennika przy rozpoznanym wariancie i pamięci; rozpoznane uszkodzenia wykluczają ofertę z okazji. Uszkodzenia są wykrywane w tytule i opisie, jeśli źródło udostępni opis. Części składowe i etui są odfiltrowywane, a cały uszkodzony telefon „na części” może trafić do uszkodzonych.
+
+Testy przed wydaniem: parsery, filtry, cennik, próg kwotowy, podpisy i uprawnienia Discorda, zapis historii, ponawianie, uzupełnianie znanych ofert, licznik wysyłek i restart sesji. Wcześniejsza kontrola działania na serwerze potwierdziła dwie rzeczywiste wysyłki na kanał okazji. Testy nie potwierdzają, że zewnętrzne RSS udostępniają wszystkie oferty OLX ani że każda oferta dotrze w 5 minut. To ograniczenie danych, którego oznaczenie wersji nie usuwa.

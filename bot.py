@@ -28,6 +28,8 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
+VERSION = "1.0.0"
+
 MODEL_IDS = ['duo', '18 pro max', '18 pro', '17 pro max', '17 pro', '17', '17e', 'air', '16 pro max', '16 pro', '16 plus', '16', '16e', '15 pro max', '15 pro', '15 plus', '15', '14 pro max', '14 pro', '14 plus', '14', '13 pro max', '13 pro', '13 mini', '13', '12 pro max', '12 pro', '12 mini', '12', '11 pro max', '11 pro', '11', 'xs max', 'xs', 'xr', 'x', 'se 2022', 'se 2020', 'se 2016', 'se', '8 plus', '8', '7 plus', '7', '6s plus', '6s', '6 plus', '6', '5s', '5c', '5', '4s', '4', '3gs', '3g', '2g']
 
 ROOT = Path(__file__).resolve().parent
@@ -137,9 +139,10 @@ def load_state() -> dict[str, Any]:
         for key in ("seen_ids", "notified_ids", "rejected_ids", "bootstrap_searches", "initialized_searches"):
             if key in state and (not isinstance(state[key], list) or any(not isinstance(x, str) for x in state[key])):
                 raise ValueError("Nieprawidłowy format historii")
-        receipts = state.get("route_receipts", {})
-        if not isinstance(receipts, dict) or any(not isinstance(k, str) or not isinstance(v, list) or any(not isinstance(x, str) for x in v) for k,v in receipts.items()):
-            raise ValueError("Nieprawidłowa historia dostarczeń")
+        for history_key in ("route_receipts", "secondary_delivered"):
+            receipts = state.get(history_key, {})
+            if not isinstance(receipts, dict) or any(not isinstance(k, str) or not isinstance(v, list) or any(not isinstance(x, str) for x in v) for k,v in receipts.items()):
+                raise ValueError("Nieprawidłowa historia dostarczeń")
         return state
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         # Never silently replace an existing history with a fresh baseline:
@@ -190,6 +193,7 @@ def normalize_phone_title(title: str) -> str:
     return re.sub(r"(?<=\d)(?=pro|max|mini|plus)", " ", title, flags=re.IGNORECASE)
 
 
+@lru_cache(maxsize=4096)
 def detect_model(title: str) -> str | None:
     title = normalize_phone_title(title).casefold()
     title = re.sub(r"(?<=pro)(?=max)", " ", title)
@@ -258,6 +262,7 @@ def distance_from_wilkowice(location_name: str) -> int | None:
     return round(min(distances))
 
 
+@lru_cache(maxsize=4096)
 def distance_from_city(location: str, city: str) -> float | None:
     try:
         _, places = _place_index()
@@ -685,6 +690,7 @@ def send_secondary_alert(listing: Listing, timeout: int, state: dict[str, Any]) 
             try:
                 send_discord(target, listing, timeout)
                 receipts.append(target_id)
+                state["_secondary_sent"] = state.get("_secondary_sent", 0) + 1
                 LOG.info("Potwierdzono kanał %s dla %s.", "uszkodzone" if is_damaged(listing) else "okazje", listing.listing_id)
             except Exception as exc:
                 LOG.error('Dodatkowy kanał: %s', type(exc).__name__)
@@ -713,6 +719,7 @@ def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> 
 
 
 def _scan_once(report: dict[str, Any]) -> int:
+    LOG.info("iPhone Sniper %s", VERSION)
     config = load_config()
     if not config.get("enabled", True):
         report["status"] = "paused"
@@ -720,6 +727,7 @@ def _scan_once(report: dict[str, Any]) -> int:
         return 0
     report["searches_total"] = len(config["searches"])
     state = load_state()
+    state["_secondary_sent"] = 0
     if state.get("id_format_version") != 2:
         LOG.info("Aktualizacja identyfikatorów: ustalam nową historię bez alertów o starych ofertach.")
         state = {"initialized": False, "seen_ids": [], "initialized_searches": [], "id_format_version": 2}
@@ -778,10 +786,10 @@ def _scan_once(report: dict[str, Any]) -> int:
                 successful_searches += 1
                 report["searches_ok"] = successful_searches
                 LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
-                LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtr tytułu.",
-                         sum(x.listing_id in seen for x in listings),
-                         sum(not is_flip_candidate(x, config) for x in listings))
-                candidates = [item for item in listings if is_flip_candidate(item, config)]
+                candidate_flags = {id(item): is_flip_candidate(item, config) for item in listings}
+                LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtry.",
+                         sum(x.listing_id in seen for x in listings), sum(not value for value in candidate_flags.values()))
+                candidates = [item for item in listings if candidate_flags[id(item)]]
                 LOG.info("Klasyfikacja źródła: %d pasujących; %d uszkodzonych; %d okazji >=100 zł.",
                     len(candidates), sum(is_damaged(item) for item in candidates),
                     sum((deal_discount(item) or 0) >= 100 for item in candidates))
@@ -789,7 +797,7 @@ def _scan_once(report: dict[str, Any]) -> int:
                     if listing.listing_id in seen:
                         # A later provider may supply a description missing on first detection.
                         # Recheck only ads actually delivered to the main channel, not baseline ads.
-                        if listing.listing_id in state.get("notified_ids", []) and is_flip_candidate(listing, config):
+                        if listing.listing_id in state.get("notified_ids", []) and candidate_flags[id(listing)]:
                             before = json.dumps(state.get("secondary_delivered", {}), sort_keys=True)
                             if not send_secondary_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
                                 report["errors"].append("Nie dostarczono dodatkowego alertu; ponowię.")
@@ -799,7 +807,7 @@ def _scan_once(report: dict[str, Any]) -> int:
                     fresh_ids.append(listing.listing_id)
                     if bootstrap:
                         seen.add(listing.listing_id)
-                    elif is_flip_candidate(listing, config):
+                    elif candidate_flags[id(listing)]:
                         seen.add(listing.listing_id)
                         rejected.discard(listing.listing_id)
                         found.append(listing)
@@ -826,11 +834,11 @@ def _scan_once(report: dict[str, Any]) -> int:
     # Non-matching results can be marked seen immediately. Matching items are stored only after
     # at least one channel confirms the send, so temporary notification errors can be retried.
     report["matched"] = len(found)
-    report["alerts"] = len(successfully_notified)
+    report["alerts"] = len(successfully_notified) + state.get("_secondary_sent", 0)
     if len(successfully_notified) < len(found):
         report["errors"].append("Nie wszystkie alerty zostały dostarczone; bot ponowi wysyłkę.")
     checkpoint()
-    LOG.info("Koniec sprawdzania. Nowe oferty pasujące do iPhone'ów: %d; wysłane alerty: %d.", len(found), len(successfully_notified))
+    LOG.info("Koniec sprawdzania. Nowe oferty: %d; potwierdzone wysyłki główne: %d; dodatkowe: %d.", len(found), len(successfully_notified), state.get("_secondary_sent", 0))
     return 0 if not report["errors"] and len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
 
 
