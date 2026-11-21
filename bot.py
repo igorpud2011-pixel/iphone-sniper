@@ -104,8 +104,17 @@ def load_config() -> dict[str, Any]:
         config["searches"] = [{"name": f"iPhone {n} · {city} +{radius} km", "source": "rss",
             "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone-{n}/?" + urlencode(query)} for n in families]
         # Additional first-page search catches titles missed by family searches.
-        config["searches"].append({"name": f"iPhone · {city} +{radius} km", "source":"rss",
+        config["searches"].insert(0, {"name": f"iPhone · {city} +{radius} km", "source":"rss",
             "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone/?" + urlencode(query)})
+        if nationwide:
+            # Extra pages catch fast-moving nationwide listings without widening the filters.
+            family_searches = config["searches"][1:]
+            start = int(time.time() // 60) % len(family_searches)
+            extra = (family_searches[start:] + family_searches[:start])[:3]
+            config["searches"].extend(
+                {**search, "name": search["name"] + " · strona 2", "url": search["url"] + "&page=2"}
+                for search in extra
+            )
         config["model_ids"] = models
         config["price_min"] = minimum
         config["price_max"] = maximum
@@ -455,14 +464,25 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
-    # Product names can follow the phone model ("iPhone 13 etui czarne").
-    # Preserve bundles such as "iPhone 13 z etui" and storage-first phone titles.
+    # Match the item being sold, while allowing phone bundles and fault descriptions.
+    part = (r"(?:etui|etiu|case|pokrowiec|folia|szkło ochronne|szklo ochronne|"
+            r"wyświetlacz|wyswietlacz|ekran|lcd|oled|digitizer|bateri[aeę]|akumulator|"
+            r"płyt[ayę] główn[ayą]|plyt[ay] glown[ay]|obudow[ayę]|korpus|ramk[aię]|"
+            r"tyln[ae] klapk[ai]|plecki|szybka|aparat|kamera|głośnik|glosnik|"
+            r"taśm[ayę]|tasm[ay]|flex|gniazdo|złącze|zlacze|port ładowania|"
+            r"przycisk|wibracja|ładowarka|ladowarka|kabel|pudełko|pudelko)")
+    prefix, _, remainder = title.partition("iphone")
+    if re.search(r"\b" + part + r"\b", prefix):
+        return False
     model = detect_model(title)
     if model:
-        normalized = normalize_phone_title(title)
         model_pattern = re.escape(model).replace(r"\ ", r"\s*")
-        tail = re.search(r"\biphone\s*" + model_pattern + r"\s+(.+)", normalized)
-        if tail and re.match(r"(?:etui|etiu|case|pokrowiec|folia|(?:szkło|szklo) ochronne|(?:wyświetlacz|wyswietlacz|ekran) (?:lcd|oled)|oryginalne części)\b", tail[1]):
+        tail = re.sub(r"^\s*" + model_pattern, "", remainder, count=1)
+        tail = re.sub(r"^[\s:|–—-]*(?:\d+\s*(?:gb|tb)\b[\s:|–—-]*)?", "", tail)
+        if re.match(r"(?:oryginaln[yae]\s+|sam[aeo]?\s+|now[yae]\s+)*" + part + r"\b", tail):
+            if not re.match(part + r"\s+(?:nie działa|nie dziala|pęknięt\w*|pekniet\w*|uszkodzon\w*|do wymiany|porysowan\w*|\d+\s*%)", tail):
+                return False
+        if re.match(r"(?:różne |rozne |oryginalne |same )*cz[ęe][śs]ci\b", tail):
             return False
     city, radius = config.get("area_city"), config.get("area_radius")
     if city and radius is not None:
@@ -594,7 +614,7 @@ def offer_components(listing: Listing) -> list[dict[str, Any]]:
         return []
     # URL fragments stay in the browser, out of server requests and referrers.
     origin = "https://iphone-sniper-control-igor.splendidtapioca8.chatgpt.site"
-    fragment = urlencode({"url": urlunsplit(("https", "www.olx.pl", parsed.path, "", "")), "price": suggested_offer(listing)})
+    fragment = urlencode({"url": urlunsplit(("https", "www.olx.pl", parsed.path, "", "")), "price": suggested_offer(listing), "title": listing.title[:250]})
     return [{"type":1,"components":[
         {"type":2,"style":5,"label":"💬 Zaproponuj cenę","url":origin+"/offer#"+fragment},
         {"type":2,"style":5,"label":"Otwórz OLX","url":listing.url}]}]
@@ -609,7 +629,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     notes = []
     for line in lines:
         if line.startswith("Twoja cena sprzedaży:"):
-            prices.append("💰 **Sprzedaż:** " + line.split(":", 1)[1].strip())
+            prices.append("💰 **Cena z cennika:** " + line.split(":", 1)[1].strip())
         elif line.startswith("Zysk przed kosztami:"):
             prices.append("📈 **Zysk przed kosztami:** " + line.split(":", 1)[1].strip())
         elif line.startswith("Cennik:"):
@@ -636,9 +656,9 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     if posted:
         body.append("🕒 OLX: " + posted[:200])
     timestamp = listing.detected_at or int(time.time())
-    timing = f"⚡ Wykryto <t:{timestamp}:t> · <t:{timestamp}:R>"
+    timing = f"⚡ **Bot wykrył:** <t:{timestamp}:t>"
     if listing.fetch_seconds is not None:
-        timing += f" · odczyt {listing.fetch_seconds:.1f} s"
+        timing += f" · pobranie {listing.fetch_seconds:.1f} s"
     body.append(timing)
     testing = listing.listing_id in {"test", "pricing-test"}
     if testing:
@@ -871,7 +891,7 @@ def _scan_once(report: dict[str, Any]) -> int:
                                 checkpoint()
                                 LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
                         except Exception as exc:
-                            LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
+                            LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, type(exc).__name__)
                         finally:
                             checkpoint()
                     else:
