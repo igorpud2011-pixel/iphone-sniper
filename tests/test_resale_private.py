@@ -30,5 +30,5 @@ class ResaleTests(unittest.TestCase):
         self.assertEqual(len(payload['embeds']),1)
         card=payload['embeds'][0]
         self.assertIn('**Zakup:** **200 zł**',card['description'])
-        self.assertIn('**Sprzedaż:** **500 zł**',card['description'])
+        self.assertIn('**Cena z cennika:** **500 zł**',card['description'])
         self.assertFalse(card.get('fields'))
