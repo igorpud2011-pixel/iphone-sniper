@@ -106,6 +106,15 @@ def load_config() -> dict[str, Any]:
         # Additional first-page search catches titles missed by family searches.
         config["searches"].append({"name": f"iPhone · {city} +{radius} km", "source":"rss",
             "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone/?" + urlencode(query)})
+        if nationwide:
+            # Extra pages catch fast-moving nationwide listings without widening the filters.
+            family_searches = config["searches"][:-1]
+            start = int(time.time() // 60) % len(family_searches)
+            extra = (family_searches[start:] + family_searches[:start])[:3]
+            config["searches"].extend(
+                {**search, "name": search["name"] + " · strona 2", "url": search["url"] + "&page=2"}
+                for search in extra
+            )
         config["model_ids"] = models
         config["price_min"] = minimum
         config["price_max"] = maximum
@@ -455,14 +464,25 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     include_pattern = config.get("include_title_regex", r"\biphone\s*(11|12|13)\b")
     if (detect_model(title) not in config["model_ids"] if "model_ids" in config else not re.search(include_pattern, title, flags=re.IGNORECASE)):
         return False
-    # Product names can follow the phone model ("iPhone 13 etui czarne").
-    # Preserve bundles such as "iPhone 13 z etui" and storage-first phone titles.
+    # Match the item being sold, while allowing phone bundles and fault descriptions.
+    part = (r"(?:etui|etiu|case|pokrowiec|folia|szkło ochronne|szklo ochronne|"
+            r"wyświetlacz|wyswietlacz|ekran|lcd|oled|digitizer|bateri[aeę]|akumulator|"
+            r"płyt[ayę] główn[ayą]|plyt[ay] glown[ay]|obudow[ayę]|korpus|ramk[aię]|"
+            r"tyln[ae] klapk[ai]|plecki|szybka|aparat|kamera|głośnik|glosnik|"
+            r"taśm[ayę]|tasm[ay]|flex|gniazdo|złącze|zlacze|port ładowania|"
+            r"przycisk|wibracja|ładowarka|ladowarka|kabel|pudełko|pudelko)")
+    prefix, _, remainder = title.partition("iphone")
+    if re.search(r"\b" + part + r"\b", prefix):
+        return False
     model = detect_model(title)
     if model:
-        normalized = normalize_phone_title(title)
         model_pattern = re.escape(model).replace(r"\ ", r"\s*")
-        tail = re.search(r"\biphone\s*" + model_pattern + r"\s+(.+)", normalized)
-        if tail and re.match(r"(?:etui|etiu|case|pokrowiec|folia|(?:szkło|szklo) ochronne|(?:wyświetlacz|wyswietlacz|ekran) (?:lcd|oled)|oryginalne części)\b", tail[1]):
+        tail = re.sub(r"^\s*" + model_pattern, "", remainder, count=1)
+        tail = re.sub(r"^[\s:|–—-]*(?:\d+\s*(?:gb|tb)\b[\s:|–—-]*)?", "", tail)
+        if re.match(r"(?:oryginaln[yae]\s+|sam[aeo]?\s+|now[yae]\s+)*" + part + r"\b", tail):
+            if not re.match(part + r"\s+(?:nie działa|nie dziala|pęknięt\w*|pekniet\w*|uszkodzon\w*|do wymiany|porysowan\w*|\d+\s*%)", tail):
+                return False
+        if re.match(r"(?:różne |rozne |oryginalne |same )*cz[ęe][śs]ci\b", tail):
             return False
     city, radius = config.get("area_city"), config.get("area_radius")
     if city and radius is not None:
