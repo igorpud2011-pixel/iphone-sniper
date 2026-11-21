@@ -558,14 +558,22 @@ def resale_table() -> dict[str, Any]:
     return table
 
 
+def storage_capacities(title: str) -> set[int]:
+    capacity = r"(?:(32|64|128|256|512|1024|2048)\s*GB|([12])\s*TB)\b"
+    separated = re.sub(r"(?<=\d)(?=" + capacity + ")", " ", title, flags=re.I)
+    return {
+        int(gb) if gb else 1024 * int(tb)
+        for gb, tb in re.findall(r"(?<!\d)" + capacity, separated, flags=re.I)
+    }
+
+
 def resale_estimate(listing: Listing) -> str:
     try:
         table = resale_table()
     except (OSError, ValueError):
         return "Cennik niedostępny. Nie wyliczam zysku."
     model = detect_model(listing.title)
-    capacity_title = re.sub(r"(?<=\d)(?=(?:32|64|128|256|512|1024|2048)\s*(?:GB|TB)\b)", " ", listing.title, flags=re.IGNORECASE)
-    capacities = {int(n)*(1024 if unit.lower()=="tb" else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", capacity_title, flags=re.IGNORECASE)}
+    capacities = storage_capacities(listing.title)
     rows = [r for r in table["rows"] if r["model"]==model]
     exact = len(capacities)==1
     if exact:
@@ -597,8 +605,7 @@ def suggested_offer(listing: Listing) -> str:
         table = resale_table()
     except (OSError, ValueError):
         return ""
-    title = re.sub(r"(?<=\d)(?=(?:32|64|128|256|512|1024|2048)\s*GB\b|[12]\s*TB\b)", " ", listing.title, flags=re.I)
-    capacities = {int(n)*(1024 if unit.lower() == "tb" else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", title, flags=re.I)}
+    capacities = storage_capacities(listing.title)
     if len(capacities) != 1:
         return ""
     rows = [r for r in table["rows"] if r["model"] == detect_model(listing.title) and r["storage_gb"] == next(iter(capacities))]
@@ -735,8 +742,7 @@ def deal_discount(listing: Listing) -> float | None:
         table = resale_table()
     except (OSError, ValueError):
         return None
-    title = re.sub(r"(?<=\d)(?=(?:32|64|128|256|512|1024|2048)\s*GB\b)", " ", listing.title, flags=re.I)
-    capacities = {int(n)*(1024 if unit.lower() == 'tb' else 1) for n,unit in re.findall(r"(?<!\d)(32|64|128|256|512|1024|2048|1|2)\s*(GB|TB)\b", title, flags=re.I)}
+    capacities = storage_capacities(listing.title)
     if len(capacities) != 1:
         return None
     rows = [r for r in table['rows'] if r['model'] == detect_model(listing.title) and r['storage_gb'] == next(iter(capacities))]
