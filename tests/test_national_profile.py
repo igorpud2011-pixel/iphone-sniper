@@ -15,3 +15,14 @@ class NationalTests(unittest.TestCase):
  def test_profile_env_does_not_send_to_local_destinations(self):
   result=national_env({'SETTINGS_URL':'https://example.com/settings','SETTINGS_KEY':'test','DISCORD_WEBHOOK_URL':'private','DISCORD_DEALS_WEBHOOK_URL':'deal','TELEGRAM_BOT_TOKEN':'telegram'})
   self.assertEqual(result['ALERT_PROFILE'],'polska');self.assertTrue(result['SETTINGS_URL'].endswith('profile=polska'));self.assertTrue(result['DISCORD_WEBHOOK_URL'].endswith('/relay/polska'));self.assertNotIn('TELEGRAM_BOT_TOKEN',result);self.assertNotIn('DISCORD_DEALS_WEBHOOK_URL',result)
+ def test_damaged_delivery_is_preserved_for_national_profile(self):
+  hook='https://example.test/damaged'
+  env=national_env({'SETTINGS_URL':'https://example.test/settings','DISCORD_DAMAGED_WEBHOOK_URL':hook})
+  self.assertEqual(env['DISCORD_DAMAGED_WEBHOOK_URL'],hook)
+  listing=bot.Listing('IDTEST','iPhone 13 uszkodzony','https://www.olx.pl/d/oferta/test-IDTEST.html')
+  with patch.dict(os.environ,env),patch.object(bot,'send_discord') as send:
+   self.assertTrue(bot.send_secondary_alert(listing,5,{}))
+   send.assert_called_once_with(hook,listing,5)
+  with patch.dict(os.environ,{**env,'DAMAGED_ROUTED_NATIONALLY':'1'}),patch.object(bot,'send_discord') as send:
+   self.assertTrue(bot.send_secondary_alert(listing,5,{}))
+   send.assert_not_called()
