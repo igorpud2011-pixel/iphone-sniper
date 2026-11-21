@@ -732,7 +732,7 @@ def send_secondary_alert(listing: Listing, timeout: int, state: dict[str, Any]) 
     success = True
     target = ''
     if is_damaged(listing):
-        target = os.getenv('DISCORD_DAMAGED_WEBHOOK_URL', '').strip()
+        target = '' if os.getenv('DAMAGED_ROUTED_NATIONALLY') == '1' else os.getenv('DISCORD_DAMAGED_WEBHOOK_URL', '').strip()
     else:
         discount = deal_discount(listing)
         if discount is not None and discount >= 100:
