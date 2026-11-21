@@ -13,6 +13,7 @@ class OfferButtonTests(unittest.TestCase):
             link=bot.offer_components(ad)[0]['components'][0]['url']
             self.assertEqual(urlsplit(link).query,'')
             self.assertEqual(parse_qs(urlsplit(link).fragment)['price'],['300'])
+            self.assertEqual(parse_qs(urlsplit(link).fragment)['title'], [ad.title])
     def test_unknown_suspect_and_negative_are_manual(self):
         for price,suspect,title in [(500,False,'iPhone 11'),(500,True,'iPhone 11 64GB'),(100,False,'iPhone 11 64GB')]:
             with self.subTest(title=title,price=price,suspect=suspect),patch.object(bot,'resale_table',return_value=self.table(price,suspect)):
