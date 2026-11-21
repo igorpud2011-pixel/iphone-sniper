@@ -10,6 +10,18 @@ class RoutingTests(unittest.TestCase):
                 self.assertEqual(bot.deal_discount(bot.Listing('x','iPhone 13 128GB','',price=price)),expected)
             self.assertIsNone(bot.deal_discount(bot.Listing('x','iPhone 13','',price='200 zł')))
             self.assertIsNone(bot.deal_discount(bot.Listing('x','iPhone 13 128GB uszkodzony','',price='200 zł')))
+    def test_compact_terabyte_price_and_deal_agree(self):
+        table = {'date': 'test', 'rows': [
+            {'model': '15 pro', 'storage_gb': 512, 'sale_price': 1200, 'suspect': False},
+            {'model': '15 pro', 'storage_gb': 1024, 'sale_price': 1500, 'suspect': False},
+        ]}
+        ad = bot.Listing('x', 'iPhone15Pro1TB', '', price='1400 zł')
+        with patch.object(bot, 'resale_table', return_value=table):
+            self.assertEqual(bot.storage_capacities(ad.title), {1024})
+            self.assertEqual(bot.deal_discount(ad), 100)
+            self.assertEqual(bot.suggested_offer(ad), '1300')
+            self.assertIn('1500 zł', bot.resale_estimate(ad))
+
     def test_damaged_signals_and_negation(self):
         for title in ['iPhone 13 uszkodzony','iPhone 13 nie działa','iPhone 13 brak Face ID']:
             self.assertTrue(bot.is_damaged(bot.Listing('x',title,'')))
