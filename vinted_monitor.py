@@ -9,9 +9,10 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
+from bot import Listing, detect_model, resale_estimate
+
 ORIGIN = "https://www.vinted.pl"
 STATE = Path(".vinted-state.json")
-PHONE = re.compile(r"\biphone[ -]*(?:\d{1,2}|se|xs?|xr|air)\b", re.I)
 ACCESSORY = re.compile(r"\b(?:etui|case|cover|husa|husă|hülle|protector|pokrowiec|folia|"
                        r"koque|coque|obudowa|ładowarka|kabel|szkło|wyświetlacz|dummy)\b", re.I)
 LINK = re.compile(r"/items/(\d+)(?:-[^/?#]+)?/?")
@@ -42,7 +43,73 @@ def save(seen):
     temporary.replace(STATE)
 
 
-def scan(hook):
+PRICE = re.compile(r"(?<![\d.,])(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*zł", re.I)
+META = re.compile(r", (?:Marka|Model|Stan|Rozmiar|Kolor): ")
+CONDITION = re.compile(r", Stan: ([^,]+)")
+MODEL = re.compile(r", Model: ([^,]+)")
+
+
+def item_details(details):
+    title = META.split(details, maxsplit=1)[0]
+    price = PRICE.search(details[len(title):])
+    if not price:
+        price = PRICE.search(details)
+        if price:
+            title = details[:price.start()].rstrip(", ")
+    condition = CONDITION.search(details)
+    model = MODEL.search(details)
+    model_title = title
+    if not detect_model(title) and model and detect_model(model[1]):
+        model_title = f"{model[1]} {title}"
+    raw_price = re.sub(r"\s", "", price[1]).replace(",", ".") if price else ""
+    return title, model_title, (float(raw_price) if raw_price else None), (condition[1] if condition else "")
+
+
+def alert_payload(item_id, details, url, settings):
+    title, model_title, amount, condition = item_details(details)
+    model = detect_model(model_title)
+    if not model or model not in settings["models"] or ACCESSORY.search(title):
+        return None
+    minimum, maximum = settings["min"], settings["max"]
+    if amount is None and (minimum or maximum is not None):
+        return None
+    if amount is not None and (amount < minimum or (maximum is not None and amount > maximum)):
+        return None
+    price = f"{amount:.2f}".rstrip("0").rstrip(".").replace(".", ",") + " zł" if amount is not None else "Nie podano"
+    valuation = resale_estimate(Listing(item_id, model_title, url, price=price))
+    lines = [f"🏷️ **Zakup:** **{price}**"]
+    if condition:
+        lines.append(f"📦 **Stan:** {condition[:100]}")
+    for line in valuation.splitlines():
+        if line.startswith("Twoja cena sprzedaży:"):
+            lines.append("💰 **Cena z cennika:** " + line.split(": ", 1)[1])
+        elif line.startswith("Zysk przed kosztami:"):
+            lines.append("📈 **Zysk przed kosztami:** " + line.split(": ", 1)[1])
+        elif not line.startswith("Cennik:"):
+            lines.append(line)
+    lines.append(f"⚡ **Bot wykrył:** <t:{int(time.time())}:t>")
+    return {"embeds": [{"title": f"📱 {title}"[:250], "url": url,
+            "description": "\n".join(lines), "color": 0x007782,
+            "footer": {"text": "iPhone Sniper • Vinted • Wycena bez prowizji, napraw i wysyłki"}}],
+            "allowed_mentions": {"parse": []}}
+
+
+def settings_request(path, data=None):
+    base = os.environ["SETTINGS_URL"].strip()
+    location = urlsplit(base)
+    if location.scheme != "https":
+        raise ValueError("Nieprawidłowy adres panelu ustawień.")
+    headers = {"Authorization": "Bearer " + os.environ["SETTINGS_KEY"].strip()}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    url = f"{location.scheme}://{location.netloc}/{path}?profile=vinted"
+    request = Request(url, headers=headers, data=json.dumps(data).encode() if data is not None else None)
+    with urlopen(request, timeout=12) as response:
+        return json.load(response)
+
+
+def scan(hook, settings, report):
+
     query = urlencode({"search_text": "iPhone", "order": "newest_first"})
     request = Request(ORIGIN + "/catalog?" + query, headers={
         "User-Agent": "iPhoneSniper/1.0 (public listing alerts)",
@@ -55,8 +122,10 @@ def scan(hook):
         raise SystemExit(f"Katalog Vinted: HTTP {error.code}.") from None
     catalog = Catalog()
     catalog.feed(page.decode("utf-8", errors="replace"))
+    report["fetched"] = len(catalog.cards)
     if not catalog.cards:
         raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
+    report["searches_ok"] = 1
     if not STATE.exists() or os.environ.get("GITHUB_EVENT_NAME") in {"push", "workflow_dispatch"}:
         request = Request(hook, headers={"Accept": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"})
         try:
@@ -80,11 +149,9 @@ def scan(hook):
             continue
         fresh += 1
         url, details = catalog.cards[item_id]
-        title = details.split(", Marka:", 1)[0].split(", Stan:", 1)[0]
-        if PHONE.search(title) and not ACCESSORY.search(title):
-            payload = {"embeds": [{"title": title[:250], "url": url,
-                        "description": details[:500], "color": 0x007782}],
-                       "allowed_mentions": {"parse": []}}
+        payload = alert_payload(item_id, details, url, settings)
+        if payload:
+            report["matched"] += 1
             request = Request(hook + "?wait=true", json.dumps(payload).encode(),
                               {"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"}, method="POST")
             for attempt in range(2):
@@ -103,6 +170,7 @@ def scan(hook):
                         raise SystemExit("Discord ograniczył wysyłkę. Kolejny skan ponowi próbę.") from None
                     time.sleep(delay + 0.5)
             sent += 1
+            report["alerts"] += 1
             time.sleep(0.7)
         seen.append(item_id)
         save(seen)
@@ -113,8 +181,24 @@ if __name__ == "__main__":
     hook = os.environ.get("DISCORD_VINTED_WEBHOOK_URL", "").strip()
     if not HOOK.fullmatch(hook):
         raise SystemExit("Ustaw sekret DISCORD_VINTED_WEBHOOK_URL z webhookiem kanału Vinted.")
+    started = time.monotonic()
+    report = dict(status="error", searches_total=1, searches_ok=0, fetched=0, matched=0, alerts=0, errors=[])
     try:
-        scan(hook)
-    except Exception as error:
-        print(f"Skan Vinted nieudany: {type(error).__name__} {getattr(error, 'code', '')}")
+        settings = settings_request("settings")
+        if settings["enabled"]:
+            scan(hook, settings, report)
+            report["status"] = "ok"
+        else:
+            report["status"] = "paused"
+            print("Alerty Vinted wstrzymane w ustawieniach.")
+    except (Exception, SystemExit) as error:
+        message = str(error) if isinstance(error, SystemExit) else type(error).__name__
+        report["errors"].append(message)
+        print(f"Skan Vinted nieudany: {message}")
         raise SystemExit(1) from None
+    finally:
+        report.update(finished_at=int(time.time()), duration_seconds=round(time.monotonic()-started, 2))
+        try:
+            settings_request("health", report)
+        except Exception:
+            print("Nie udało się przesłać statusu Vinted do panelu.")
