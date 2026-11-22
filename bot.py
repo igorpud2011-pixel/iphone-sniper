@@ -94,6 +94,8 @@ def load_config() -> dict[str, Any]:
         if type(remote.get("enabled")) is not bool:
             raise ValueError("Niepoprawny stan monitorowania.")
         nationwide = remote.get("nationwide") is True
+        if nationwide and os.getenv("ALERT_PROFILE") == "local":
+            raise ValueError("Profil lokalny otrzymał ustawienia ogólnopolskie.")
         area_path = "" if nationwide else slug + "/"
         query = { "search[order]": "created_at:desc", "search[filter_float_price:from]": minimum}
         if not nationwide:
@@ -290,7 +292,7 @@ def distance_from_city(location: str, city: str) -> float | None:
         centers = places.get(_normalized_place(city), [])
         destinations = places.get(_normalized_place(location), [])
         if len(centers) != 1 or len(destinations) != 1:
-            return None  # Unknown or ambiguous place: retain the source's location filter.
+            return None  # No reliable coordinates for this location.
         lat, lon = map(math.radians, centers[0])
         lat2, lon2 = map(math.radians, destinations[0])
         a = math.sin((lat2-lat)/2)**2 + math.cos(lat)*math.cos(lat2)*math.sin((lon2-lon)/2)**2
@@ -487,11 +489,10 @@ def is_flip_candidate(listing: Listing, config: dict[str, Any]) -> bool:
     city, radius = config.get("area_city"), config.get("area_radius")
     if city and radius is not None:
         place = listing.location_name or extract_location(listing.location_date)[0]
-        if radius == 0 and place and _normalized_place(place) != _normalized_place(city):
-            return False
-        distance = distance_from_city(place, city)
-        if distance is not None and distance > radius:
-            return False
+        if _normalized_place(place) != _normalized_place(city):
+            distance = distance_from_city(place, city)
+            if radius == 0 or distance is None or distance > radius:
+                return False
     minimum, maximum = config.get("price_min", 0), config.get("price_max")
     if minimum or maximum is not None:
         price = re.search(r"(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*(?:zł|pln)", listing.price, flags=re.IGNORECASE)
