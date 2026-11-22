@@ -16,6 +16,7 @@ def national_env(original):
 def main():
  script=str(Path(__file__).with_name('bot.py'))
  local=os.environ.copy()
+ local["ALERT_PROFILE"]="local"
  profiles=[local]
  if local.get('SETTINGS_URL'):
   profiles.append(national_env(local))
