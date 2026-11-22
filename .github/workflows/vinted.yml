@@ -1,7 +1,7 @@
 name: Alerty Vinted
 on:
   schedule:
-    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
+    - cron: '2,22,42 * * * *'
   push:
     branches: [main]
     paths: [vinted_monitor.py, .github/workflows/vinted.yml]
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 26
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/cache/restore@v4
@@ -26,13 +26,12 @@ jobs:
       - run: python3 -m pip install -r requirements.txt
       - name: Skanuj katalog Vinted
         run: |
-          scans=5
-          if [ "$GITHUB_EVENT_NAME" = "push" ]; then scans=1; fi
+          scans=4
           result=0
           for ((scan=1; scan<=scans; scan++)); do
             started=$SECONDS
             echo "::group::Skan $scan/$scans"
-            python3 vinted_monitor.py && result=0 || result=$?
+            timeout 180s python3 -u vinted_monitor.py && result=0 || result=$?
             echo "::endgroup::"
             delay=$((300 - (SECONDS - started)))
             if [ "$scan" -lt "$scans" ] && [ "$delay" -gt 0 ]; then sleep "$delay"; fi
