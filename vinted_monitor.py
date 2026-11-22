@@ -57,7 +57,7 @@ def scan(hook):
     if not catalog.cards:
         raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
     if not STATE.exists() or os.environ.get("GITHUB_EVENT_NAME") in {"push", "workflow_dispatch"}:
-        request = Request(hook, headers={"Accept": "application/json"})
+        request = Request(hook, headers={"Accept": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"})
         try:
             with urlopen(request, timeout=15) as response:
                 if not json.load(response).get("channel_id"):
@@ -85,7 +85,7 @@ def scan(hook):
                         "description": details[:500], "color": 0x007782}],
                        "allowed_mentions": {"parse": []}}
             request = Request(hook + "?wait=true", json.dumps(payload).encode(),
-                              {"Content-Type": "application/json"}, method="POST")
+                              {"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"}, method="POST")
             with urlopen(request, timeout=15) as response:
                 response.read()
             sent += 1
