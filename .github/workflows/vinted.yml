@@ -23,9 +23,13 @@ jobs:
           path: .vinted-state.json
           key: vinted-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: vinted-state-
+      - run: python3 -m pip install -r requirements.txt
       - run: python3 vinted_monitor.py
         env:
           DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
+          SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
+          SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
+          RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() && hashFiles('.vinted-state.json') != '' }}
         with:
