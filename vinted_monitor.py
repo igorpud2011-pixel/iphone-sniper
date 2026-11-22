@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 from html.parser import HTMLParser
+from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
@@ -46,17 +47,23 @@ def scan(hook):
         "User-Agent": "iPhoneSniper/1.0 (public listing alerts)",
         "Accept": "text/html",
     })
-    with urlopen(request, timeout=25) as response:
-        page = response.read(12_000_000)
+    try:
+        with urlopen(request, timeout=25) as response:
+            page = response.read(12_000_000)
+    except HTTPError as error:
+        raise SystemExit(f"Katalog Vinted: HTTP {error.code}.") from None
     catalog = Catalog()
     catalog.feed(page.decode("utf-8", errors="replace"))
     if not catalog.cards:
         raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
     if not STATE.exists() or os.environ.get("GITHUB_EVENT_NAME") in {"push", "workflow_dispatch"}:
         request = Request(hook, headers={"Accept": "application/json"})
-        with urlopen(request, timeout=15) as response:
-            if not json.load(response).get("channel_id"):
-                raise RuntimeError("Discord nie potwierdził kanału webhooka.")
+        try:
+            with urlopen(request, timeout=15) as response:
+                if not json.load(response).get("channel_id"):
+                    raise RuntimeError("Discord nie potwierdził kanału webhooka.")
+        except HTTPError as error:
+            raise SystemExit(f"Sprawdzenie webhooka Discord: HTTP {error.code}.") from None
         print("Discord potwierdził kanał webhooka.")
     if not STATE.exists():
         save(list(catalog.cards))
