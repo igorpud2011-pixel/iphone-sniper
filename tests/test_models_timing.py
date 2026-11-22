@@ -29,7 +29,7 @@ class ModelTimingTests(unittest.TestCase):
         self.assertEqual(cfg['searches'][-1]['source'],'rss_bridge')
         self.assertEqual(cfg['model_ids'],remote['models'])
         self.assertFalse(bot.is_flip_candidate(bot.Listing('id','iPhone 13 128 GB',''),cfg))
-        self.assertTrue(bot.is_flip_candidate(bot.Listing('id','iPhone13Pro 128GB',''),cfg))
+        self.assertTrue(bot.is_flip_candidate(bot.Listing('id','iPhone13Pro 128GB','',location_name='Bielsko-Biała'),cfg))
 
     def test_se_short_names_and_local_price(self):
         self.assertEqual(bot.detect_model('iPhone SE2 64 GB'), 'se 2020')
@@ -40,8 +40,17 @@ class ModelTimingTests(unittest.TestCase):
 
     def test_promoted_outside_radius_is_rejected(self):
         cfg={'model_ids':['13'],'area_city':'Bielsko-Biała','area_radius':30}
-        self.assertFalse(bot.is_flip_candidate(bot.Listing('1','iPhone 13','',location_name='Żory'),cfg))
-        self.assertTrue(bot.is_flip_candidate(bot.Listing('2','iPhone 13','',location_name='Bielsko-Biała'),cfg))
+        for place in ('Żory', 'Gdańsk', '', 'Nieznana miejscowość'):
+            with self.subTest(place=place):
+                self.assertFalse(bot.is_flip_candidate(bot.Listing('1','iPhone 13','',location_name=place),cfg))
+        for place in ('Bielsko-Biała', 'Wilkowice'):
+            with self.subTest(place=place):
+                self.assertTrue(bot.is_flip_candidate(bot.Listing('2','iPhone 13','',location_name=place),cfg))
+        ad = bot.Listing('3', 'iPhone 13', '', location_name='Inna miejscowość')
+        for distance, allowed in ((30, True), (30.01, False), (35, False)):
+            with patch.object(bot, 'distance_from_city', return_value=distance):
+                self.assertEqual(bot.is_flip_candidate(ad, cfg), allowed)
+        self.assertTrue(bot.is_flip_candidate(bot.Listing('4','iPhone 13','',location_name='Gdańsk'),{'model_ids':['13']}))
 
     def test_status_reports_error_and_pause(self):
         with patch.object(bot, 'publish_status') as publish, patch.object(bot, 'load_config', side_effect=RuntimeError('secret-value')):
