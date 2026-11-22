@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 
 import requests
 
-from bot import Listing, detect_model, resale_estimate
+from bot import Listing, detect_model, phone_model, resale_estimate
 
 ORIGIN = "https://www.vinted.pl"
 STATE = Path(".vinted-state.json")
@@ -84,7 +84,7 @@ def alert_payload(item_id, details, url, settings):
         return None
     price = f"{amount:.2f}".rstrip("0").rstrip(".").replace(".", ",") + " zł" if amount is not None else "Nie podano"
     valuation = resale_estimate(Listing(item_id, model_title, url, price=price))
-    lines = [f"🏷️ **Zakup:** **{price}**"]
+    lines = [f"📱 **Model:** {phone_model(model_title)}", f"🏷️ **Cena ogłoszenia:** **{price}**"]
     if condition:
         lines.append(f"📦 **Stan:** {condition[:100]}")
     for line in valuation.splitlines():
