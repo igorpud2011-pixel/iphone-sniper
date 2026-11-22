@@ -9,6 +9,8 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
+import requests
+
 from bot import Listing, detect_model, resale_estimate
 
 ORIGIN = "https://www.vinted.pl"
@@ -107,10 +109,12 @@ def settings_request(path, data=None):
     headers = {"Authorization": "Bearer " + os.environ["SETTINGS_KEY"].strip()}
     if data is not None:
         headers["Content-Type"] = "application/json"
-    url = f"{location.scheme}://{location.netloc}/{path}?profile=vinted"
-    request = Request(url, headers=headers, data=json.dumps(data).encode() if data is not None else None)
-    with urlopen(request, timeout=12) as response:
-        return json.load(response)
+    endpoint = base if path == "settings" else base.split("?", 1)[0].rsplit("/", 1)[0] + "/health"
+    response = requests.request("GET" if data is None else "POST", endpoint,
+                                params={"profile": "vinted"}, headers=headers, json=data, timeout=12)
+    if not response.ok:
+        raise RuntimeError(f"Panel Vinted /{path}: HTTP {response.status_code}.")
+    return response.json()
 
 
 def scan(hook, settings, report):
@@ -197,7 +201,7 @@ if __name__ == "__main__":
             report["status"] = "paused"
             print("Alerty Vinted wstrzymane w ustawieniach.")
     except (Exception, SystemExit) as error:
-        message = str(error) if isinstance(error, SystemExit) else type(error).__name__
+        message = str(error) if isinstance(error, (SystemExit, RuntimeError)) else type(error).__name__
         report["errors"].append(message)
         print(f"Skan Vinted nieudany: {message}")
         raise SystemExit(1) from None
