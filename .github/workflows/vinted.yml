@@ -2,10 +2,21 @@ name: Alerty Vinted
 on:
   schedule:
     - cron: '2,22,42 * * * *'
-  push:
-    branches: [main]
-    paths: [vinted_monitor.py, .github/workflows/vinted.yml]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      session_minutes:
+        type: number
+        default: 20
+    secrets:
+      DISCORD_VINTED_WEBHOOK_URL:
+        required: true
+      SETTINGS_URL:
+        required: true
+      SETTINGS_KEY:
+        required: true
+      RESALE_PRICES_JSON:
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -14,9 +25,11 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 320
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/cache/restore@v4
         id: state
         with:
@@ -26,18 +39,24 @@ jobs:
       - run: python3 -m pip install -r requirements.txt
       - name: Skanuj katalog Vinted
         run: |
-          scans=4
+          if ! [[ "$SESSION_MINUTES" =~ ^[0-9]+$ ]] || [ "$SESSION_MINUTES" -lt 1 ] || [ "$SESSION_MINUTES" -gt 300 ]; then SESSION_MINUTES=20; fi
+          scans=$(((SESSION_MINUTES + 4) / 5))
           result=0
           for ((scan=1; scan<=scans; scan++)); do
             started=$SECONDS
             echo "::group::Skan $scan/$scans"
             timeout 180s python3 -u vinted_monitor.py && result=0 || result=$?
             echo "::endgroup::"
+            if git fetch origin main --quiet && ! git diff --quiet HEAD origin/main -- vinted_monitor.py bot.py requirements.txt .github/workflows/vinted.yml .github/workflows/monitor.yml; then
+              echo "Wykryto zmianę kodu. Zapisuję stan."
+              break
+            fi
             delay=$((300 - (SECONDS - started)))
             if [ "$scan" -lt "$scans" ] && [ "$delay" -gt 0 ]; then sleep "$delay"; fi
           done
           exit "$result"
         env:
+          SESSION_MINUTES: ${{ inputs.session_minutes || 20 }}
           DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
           SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
           SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
