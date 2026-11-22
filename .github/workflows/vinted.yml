@@ -1,7 +1,7 @@
 name: Alerty Vinted
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
   push:
     branches: [main]
     paths: [vinted_monitor.py, .github/workflows/vinted.yml]
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 26
     steps:
       - uses: actions/checkout@v7
       - uses: actions/cache/restore@v4
@@ -24,7 +24,20 @@ jobs:
           key: vinted-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: vinted-state-
       - run: python3 -m pip install -r requirements.txt
-      - run: python3 vinted_monitor.py
+      - name: Skanuj katalog Vinted
+        run: |
+          scans=5
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then scans=1; fi
+          result=0
+          for ((scan=1; scan<=scans; scan++)); do
+            started=$SECONDS
+            echo "::group::Skan $scan/$scans"
+            python3 vinted_monitor.py && result=0 || result=$?
+            echo "::endgroup::"
+            delay=$((300 - (SECONDS - started)))
+            if [ "$scan" -lt "$scans" ] && [ "$delay" -gt 0 ]; then sleep "$delay"; fi
+          done
+          exit "$result"
         env:
           DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
           SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
