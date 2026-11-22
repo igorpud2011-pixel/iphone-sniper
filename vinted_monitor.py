@@ -52,6 +52,12 @@ def scan(hook):
     catalog.feed(page.decode("utf-8", errors="replace"))
     if not catalog.cards:
         raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
+    if not STATE.exists() or os.environ.get("GITHUB_EVENT_NAME") in {"push", "workflow_dispatch"}:
+        request = Request(hook, headers={"Accept": "application/json"})
+        with urlopen(request, timeout=15) as response:
+            if not json.load(response).get("channel_id"):
+                raise RuntimeError("Discord nie potwierdził kanału webhooka.")
+        print("Discord potwierdził kanał webhooka.")
     if not STATE.exists():
         save(list(catalog.cards))
         print(f"Zapisano punkt startowy: {len(catalog.cards)} pozycji.")
@@ -60,9 +66,11 @@ def scan(hook):
     known = set(seen)
     cutoff = max(map(int, seen), default=0)
     sent = 0
+    fresh = 0
     for item_id in sorted(catalog.cards, key=int):
         if item_id in known or int(item_id) <= cutoff:
             continue
+        fresh += 1
         url, details = catalog.cards[item_id]
         title = details.split(", Marka:", 1)[0].split(", Stan:", 1)[0]
         if PHONE.search(title) and not ACCESSORY.search(title):
@@ -76,7 +84,7 @@ def scan(hook):
             sent += 1
         seen.append(item_id)
         save(seen)
-    print(f"Karty: {len(catalog.cards)}. Wysłane alerty Vinted: {sent}.")
+    print(f"Karty: {len(catalog.cards)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {sent}.")
 
 
 if __name__ == "__main__":
