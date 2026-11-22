@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - bot.py
+      - vinted_monitor.py
+      - .github/workflows/vinted.yml
       - tests/**
       - discord-control.mjs
       - discord-control.test.mjs
@@ -25,8 +27,7 @@ on:
   schedule:
     - cron: '2-57/5 * * * *'
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency:
   group: iphone-sniper-monitor
@@ -34,6 +35,8 @@ concurrency:
 
 jobs:
   monitor:
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     steps:
@@ -153,3 +156,16 @@ jobs:
                   if attempt==2:raise RuntimeError('Restart nie został potwierdzony; pozostaje harmonogram awaryjny.') from None
                   time.sleep(3)
           PYCODE
+
+  vinted:
+    if: ${{ inputs.test_discord != true }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/vinted.yml
+    with:
+      session_minutes: ${{ inputs.session_minutes || 300 }}
+    secrets:
+      DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
+      SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
+      SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
+      RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
