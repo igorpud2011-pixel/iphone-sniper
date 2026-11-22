@@ -1031,7 +1031,8 @@
     "ID1CNOFH",
     "ID1CNOPW",
     "ID1BIGRC",
-    "ID1CNOSD"
+    "ID1CNOSD",
+    "ID1DOL0O"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/bielsko-biala/q-iphone-11/?search%5Bdist%5D=30&search%5Border%5D=created_at%3Adesc",
@@ -1263,7 +1264,8 @@
     "ID1DOEMU",
     "ID1DOGSY",
     "ID1BIGRC",
-    "ID1CNOSD"
+    "ID1CNOSD",
+    "ID1DOL0O"
   ],
   "rejected_ids": [
     "ID10ME2A",
@@ -1776,6 +1778,9 @@
       "discord:7f9f3e346e4cdccee8e5"
     ],
     "ID1DOMMQ": [
+      "discord:7f9f3e346e4cdccee8e5"
+    ],
+    "ID1DOL0O": [
       "discord:7f9f3e346e4cdccee8e5"
     ]
   },
