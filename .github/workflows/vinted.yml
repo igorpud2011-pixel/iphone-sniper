@@ -1,0 +1,30 @@
+name: Alerty Vinted
+on:
+  schedule:
+    - cron: '3-58/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vinted-alerts
+  cancel-in-progress: false
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache/restore@v4
+        id: state
+        with:
+          path: .vinted-state.json
+          key: vinted-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: vinted-state-
+      - run: python3 vinted_monitor.py
+        env:
+          DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
+      - uses: actions/cache/save@v4
+        if: ${{ !cancelled() && hashFiles('.vinted-state.json') != '' }}
+        with:
+          path: .vinted-state.json
+          key: ${{ steps.state.outputs.cache-primary-key }}
