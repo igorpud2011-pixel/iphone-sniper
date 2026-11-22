@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import re
+import time
 from html.parser import HTMLParser
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
@@ -86,9 +87,23 @@ def scan(hook):
                        "allowed_mentions": {"parse": []}}
             request = Request(hook + "?wait=true", json.dumps(payload).encode(),
                               {"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"}, method="POST")
-            with urlopen(request, timeout=15) as response:
-                response.read()
+            for attempt in range(2):
+                try:
+                    with urlopen(request, timeout=15) as response:
+                        response.read()
+                    break
+                except HTTPError as error:
+                    if error.code != 429 or attempt:
+                        raise SystemExit(f"Wysyłka na Discord: HTTP {error.code}.") from None
+                    try:
+                        delay = float(error.headers.get("Retry-After", "2"))
+                    except ValueError:
+                        delay = 2
+                    if not 0 <= delay <= 15:
+                        raise SystemExit("Discord ograniczył wysyłkę. Kolejny skan ponowi próbę.") from None
+                    time.sleep(delay + 0.5)
             sent += 1
+            time.sleep(0.7)
         seen.append(item_id)
         save(seen)
     print(f"Karty: {len(catalog.cards)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {sent}.")
