@@ -1,20 +1,6 @@
 {
   "initialized": true,
   "seen_ids": [
-    "IDFPJZY",
-    "ID1DJQIJ",
-    "ID1DJQIB",
-    "ID17YQWC",
-    "IDKAFRL",
-    "IDY5R5K",
-    "ID1DJQR2",
-    "ID1DJPO9",
-    "ID1CO8VN",
-    "ID1DJQWU",
-    "ID1DJQF0",
-    "ID16LWRG",
-    "ID1971WG",
-    "ID19U2LV",
     "ID1CNZN2",
     "ID1BWN27",
     "ID1DJQLF",
@@ -12000,7 +11986,21 @@
     "ID1DORZ6",
     "ID1DOSI0",
     "ID1DOS01",
-    "ID1CW2UF"
+    "ID1CW2UF",
+    "ID1DCABU",
+    "ID17DSAC",
+    "ID1DHZ36",
+    "ID1DOSJJ",
+    "ID1DOSK3",
+    "ID1D3RII",
+    "ID1DOSAH",
+    "ID10SNYL",
+    "ID1CWFRX",
+    "ID12F1MG",
+    "ID12F1GN",
+    "ID12F1JL",
+    "ID12EZS7",
+    "ID1DOS22"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0&page=2&search%5Bprivate_business%5D=private",
@@ -15566,7 +15566,10 @@
     "ID1DORRE",
     "ID1DORDE",
     "ID1DORU3",
-    "ID1DORZ6"
+    "ID1DORZ6",
+    "ID1DCABU",
+    "ID1DOSK3",
+    "ID1DOSAH"
   ],
   "rejected_ids": [
     "ID100EEA",
@@ -15632,6 +15635,7 @@
     "ID10SNKT",
     "ID10SNSY",
     "ID10SNWH",
+    "ID10SNYL",
     "ID10SO8F",
     "ID10SORF",
     "ID10SOYZ",
@@ -15815,8 +15819,12 @@
     "ID12EYDR",
     "ID12EYJM",
     "ID12EZNZ",
+    "ID12EZS7",
     "ID12F0LH",
     "ID12F0RZ",
+    "ID12F1GN",
+    "ID12F1JL",
+    "ID12F1MG",
     "ID12FIJM",
     "ID12FL4C",
     "ID12FV7H",
@@ -16775,6 +16783,7 @@
     "ID17DQ3U",
     "ID17DRMI",
     "ID17DS1F",
+    "ID17DSAC",
     "ID17DSXK",
     "ID17DV0X",
     "ID17E4DY",
@@ -20325,6 +20334,7 @@
     "ID1CWE6L",
     "ID1CWEO9",
     "ID1CWF9R",
+    "ID1CWFRX",
     "ID1CWHCH",
     "ID1CWHI4",
     "ID1CWHIF",
@@ -25865,7 +25875,9 @@
     "ID1DORWG",
     "ID1DORWI",
     "ID1DOS01",
+    "ID1DOS22",
     "ID1DOSI0",
+    "ID1DOSJJ",
     "ID4CZUL",
     "IDAIDR8",
     "IDAS4IU",
@@ -26746,6 +26758,9 @@
       "discord:b5afec6f171f5fb22634"
     ],
     "ID1DOQER": [
+      "discord:b5afec6f171f5fb22634"
+    ],
+    "ID1DCABU": [
       "discord:b5afec6f171f5fb22634"
     ]
   },
