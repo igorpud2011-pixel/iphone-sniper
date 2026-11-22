@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import time
+import unicodedata
 from html.parser import HTMLParser
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
@@ -15,13 +16,33 @@ from bot import Listing, detect_model, phone_model, resale_estimate
 
 ORIGIN = "https://www.vinted.pl"
 STATE = Path(".vinted-state.json")
-ACCESSORY = re.compile(r"\b(?:etui|case|cover|husa|husă|hülle|protector|pokrowiec|folia|"
-                       r"koque|coque|obudow[ayę]|korpus|ładowark[ai]|kabel|szkło|szybk[aię]|"
-                       r"wyświetlacz\w*|wyswietlacz\w*|ekran\w*|digitizer|lcd|oled|"
-                       r"akumulator\w*|płyta główna|plyta glowna|taśm[ayę]|pudełk[oa]|"
-                       r"klapk[aię]|dummy|części|czesci)\b", re.I)
-PART_AT_START = re.compile(r"^(?:(?:now[yae]|oryginaln[yae])\s+)*(?:bateri[aeę]|aparat|kamera|moduł|głośnik)\b", re.I)
-PART_AFTER_MODEL = re.compile(r"\b(?:bateri[aeę]|aparat|kamera|głośnik)\s*(?:$|(?:oryginaln\w*|zamiennik|nowa|nowy)\b)", re.I)
+ACCESSORY = re.compile(
+    r"\b(?:etui|case|backcase|bumper|cover|husa|hulle|protector\w*|pokrow\w*|foli\w*|"
+    r"szkl\w*|obudow\w*|korpus\w*|ladowar\w*|kab(?:el|l\w*)|przewod\w*|uchwyt\w*|"
+    r"adapter\w*|portfel\w*|smycz\w*|powerbank\w*|sluchawk\w*|airpods|airtag|pop(?:socket|grip)\w*|stojak\w*|wyswietlacz\w*|ekran\w*|digitizer|"
+    r"lcd|oled|akumulator\w*|czesci|plyt[ay] glown\w*|tasm[ay]|pudelk\w*|klapk\w*|dummy|"
+    r"atrap\w*)\b"
+)
+PART = re.compile(
+    r"^(?:(?:now\w*|oryginaln\w*|uzywan\w*|zamiennik)\s+)*"
+    r"(?:bateri\w*|aparat|kamera|modul|glosnik|szybk\w*)\b|"
+    r"\b(?:bateri\w*|aparat|kamera|glosnik|szybk\w*)\s*(?:$|oryginaln\w*\b|zamiennik\b|now[ay]\b)"
+)
+BUNDLE = re.compile(
+    r"(?:\s+(?:z|w zestawie z|plus)\s+|\s*\+\s*)"
+    r"(?=etui\b|pokrow\w*\b|ladowar\w*\b|pudelk\w*\b)"
+)
+
+
+def is_phone_title(title):
+    if not detect_model(title):
+        return False
+    folded = unicodedata.normalize("NFD", title.lower().replace("ł", "l"))
+    folded = "".join(char for char in folded if not unicodedata.combining(char))
+    subject = BUNDLE.split(re.sub(r"[^a-z0-9%+]+", " ", folded).strip(), maxsplit=1)[0]
+    return not (ACCESSORY.search(subject) or PART.search(subject))
+
+
 LINK = re.compile(r"/items/(\d+)(?:-[^/?#]+)?/?")
 HOOK = re.compile(r"https://discord\.com/api/webhooks/\d{15,22}/[A-Za-z0-9_-]+")
 
@@ -75,7 +96,7 @@ def item_details(details):
 def alert_payload(item_id, details, url, settings):
     title, model_title, amount, condition = item_details(details)
     model = detect_model(model_title)
-    if not model or model not in settings["models"] or ACCESSORY.search(title) or PART_AT_START.search(title) or PART_AFTER_MODEL.search(title):
+    if not model or model not in settings["models"] or not is_phone_title(title):
         return None
     minimum, maximum = settings["min"], settings["max"]
     if amount is None and (minimum or maximum is not None):
