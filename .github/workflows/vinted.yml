@@ -1,7 +1,10 @@
 name: Alerty Vinted
 on:
   schedule:
-    - cron: '3-58/5 * * * *'
+    - cron: '*/5 * * * *'
+  push:
+    branches: [main]
+    paths: [vinted_monitor.py, .github/workflows/vinted.yml]
   workflow_dispatch:
 permissions:
   contents: read
