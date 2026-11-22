@@ -42,7 +42,11 @@ def save(seen):
 
 def scan(hook):
     query = urlencode({"search_text": "iPhone", "order": "newest_first"})
-    with urlopen(ORIGIN + "/catalog?" + query, timeout=25) as response:
+    request = Request(ORIGIN + "/catalog?" + query, headers={
+        "User-Agent": "iPhoneSniper/1.0 (public listing alerts)",
+        "Accept": "text/html",
+    })
+    with urlopen(request, timeout=25) as response:
         page = response.read(12_000_000)
     catalog = Catalog()
     catalog.feed(page.decode("utf-8", errors="replace"))
