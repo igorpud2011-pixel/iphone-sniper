@@ -14,7 +14,12 @@ from bot import Listing, detect_model, resale_estimate
 ORIGIN = "https://www.vinted.pl"
 STATE = Path(".vinted-state.json")
 ACCESSORY = re.compile(r"\b(?:etui|case|cover|husa|husă|hülle|protector|pokrowiec|folia|"
-                       r"koque|coque|obudowa|ładowarka|kabel|szkło|wyświetlacz|dummy)\b", re.I)
+                       r"koque|coque|obudow[ayę]|korpus|ładowark[ai]|kabel|szkło|szybk[aię]|"
+                       r"wyświetlacz\w*|wyswietlacz\w*|ekran\w*|digitizer|lcd|oled|"
+                       r"akumulator\w*|płyta główna|plyta glowna|taśm[ayę]|pudełk[oa]|"
+                       r"klapk[aię]|dummy|części|czesci)\b", re.I)
+PART_AT_START = re.compile(r"^(?:(?:now[yae]|oryginaln[yae])\s+)*(?:bateri[aeę]|aparat|kamera|moduł|głośnik)\b", re.I)
+PART_AFTER_MODEL = re.compile(r"\b(?:bateri[aeę]|aparat|kamera|głośnik)\s*(?:$|(?:oryginaln\w*|zamiennik|nowa|nowy)\b)", re.I)
 LINK = re.compile(r"/items/(\d+)(?:-[^/?#]+)?/?")
 HOOK = re.compile(r"https://discord\.com/api/webhooks/\d{15,22}/[A-Za-z0-9_-]+")
 
@@ -68,7 +73,7 @@ def item_details(details):
 def alert_payload(item_id, details, url, settings):
     title, model_title, amount, condition = item_details(details)
     model = detect_model(model_title)
-    if not model or model not in settings["models"] or ACCESSORY.search(title):
+    if not model or model not in settings["models"] or ACCESSORY.search(title) or PART_AT_START.search(title) or PART_AFTER_MODEL.search(title):
         return None
     minimum, maximum = settings["min"], settings["max"]
     if amount is None and (minimum or maximum is not None):
