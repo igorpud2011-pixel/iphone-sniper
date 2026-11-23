@@ -40,7 +40,7 @@ jobs:
       - name: Skanuj katalog Vinted
         run: |
           if ! [[ "$SESSION_MINUTES" =~ ^[0-9]+$ ]] || [ "$SESSION_MINUTES" -lt 1 ] || [ "$SESSION_MINUTES" -gt 300 ]; then SESSION_MINUTES=20; fi
-          scans=$(((SESSION_MINUTES + 4) / 5))
+          scans=$(((SESSION_MINUTES + 2) / 3))
           result=0
           for ((scan=1; scan<=scans; scan++)); do
             started=$SECONDS
@@ -51,7 +51,7 @@ jobs:
               echo "Wykryto zmianę kodu. Zapisuję stan."
               break
             fi
-            delay=$((300 - (SECONDS - started)))
+            delay=$((180 - (SECONDS - started)))
             if [ "$scan" -lt "$scans" ] && [ "$delay" -gt 0 ]; then sleep "$delay"; fi
           done
           exit "$result"
