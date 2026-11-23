@@ -57,8 +57,10 @@ class Listing:
     seller_type: str = "unknown"
 
 
-def is_fast_local_scan() -> bool:
-    return os.getenv("ALERT_PROFILE") == "local" and os.getenv("OLX_LOCAL_FAST_SCAN") == "1"
+def is_fast_scan() -> bool:
+    profile = os.getenv("ALERT_PROFILE")
+    flag = {"local": "OLX_LOCAL_FAST_SCAN", "polska": "OLX_NATIONAL_FAST_SCAN"}.get(profile)
+    return bool(flag and os.getenv(flag) == "1")
 
 
 def load_config() -> dict[str, Any]:
@@ -116,7 +118,8 @@ def load_config() -> dict[str, Any]:
             # Extra pages catch fast-moving nationwide listings without widening the filters.
             broad = config["searches"][-1]
             family_searches = config["searches"][:-1]
-            config["searches"].insert(0, {**broad, "name": broad["name"] + " · strona 2", "url": broad["url"] + "&page=2"})
+            config["searches"] = [broad, *family_searches,
+                                  {**broad, "name": broad["name"] + " · strona 2", "url": broad["url"] + "&page=2"}]
             start = int(time.time() // 60) % len(family_searches)
             extra = (family_searches[start:] + family_searches[:start])[:3]
             config["searches"].extend(
@@ -148,7 +151,7 @@ def load_config() -> dict[str, Any]:
     # One broad independent feed supplements the existing family feeds.
     # Keep a single request per scan: RSS-Bridge may crawl detail pages on cache miss.
     primary = [search for search in searches if search.get("source") == "rss"]
-    if primary and is_fast_local_scan():
+    if primary and is_fast_scan():
         broad = next((search for search in primary if "/q-iphone/?" in search["url"] and "page" not in dict(parse_qsl(urlsplit(search["url"]).query))), None)
         if broad is None:
             broad = {**primary[0], "name": f'iPhone · {config["area_city"]} +{config["area_radius"]} km'}
@@ -957,7 +960,7 @@ def run_once() -> int:
         code = 2
     report["finished_at"] = int(time.time())
     report["duration_seconds"] = round(time.monotonic()-started, 1)
-    if not is_fast_local_scan():
+    if not is_fast_scan():
         publish_status(report)
     return code
 

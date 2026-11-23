@@ -176,9 +176,36 @@ def fetch_catalog(page_number):
     return catalog.cards
 
 
+def send_listing(hook, payload):
+    request = Request(hook + "?wait=true", json.dumps(payload).encode(),
+                      {"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"}, method="POST")
+    for attempt in range(2):
+        try:
+            with urlopen(request, timeout=15) as response:
+                response.read()
+            return
+        except HTTPError as error:
+            if error.code != 429 or attempt:
+                raise SystemExit(f"Wysyłka na Discord: HTTP {error.code}.") from None
+            try:
+                delay = float(error.headers.get("Retry-After", "2"))
+            except ValueError:
+                delay = 2
+            if not 0 <= delay <= 15:
+                raise SystemExit("Discord ograniczył wysyłkę. Kolejny skan ponowi próbę.") from None
+            time.sleep(delay + 0.5)
+
+
 def scan(hook, settings, report):
-    cards = {}
+    bootstrap = not STATE.exists()
+    previous = [] if bootstrap else json.loads(STATE.read_text(encoding="utf-8"))
+    seen = previous if isinstance(previous, list) else previous["seen"]
+    legacy_cutoff = (max(map(int, seen), default=0) if isinstance(previous, list) and not bootstrap
+                     else previous.get("legacy_cutoff") if isinstance(previous, dict) else None)
+    known = set(seen)
+    fetched = set()
     report["searches_total"] = CATALOG_PAGES
+    fresh = 0
     for number in range(1, CATALOG_PAGES + 1):
         try:
             batch = fetch_catalog(number)
@@ -194,74 +221,42 @@ def scan(hook, settings, report):
             report["errors"].append(f"Katalog Vinted: brak rozpoznanych kart na stronie {number}.")
             break
         report["searches_ok"] += 1
-        if batch.keys() <= cards.keys():
+        if batch.keys() <= fetched:
             break
-        for item_id, card in batch.items():
-            cards.setdefault(item_id, card)
-    report["fetched"] = len(cards)
-    if not cards:
+        fetched.update(batch)
+        report["fetched"] = len(fetched)
+        for item_id in sorted(batch, key=int, reverse=True):
+            if item_id in known:
+                continue
+            if not bootstrap and (legacy_cutoff is None or int(item_id) > legacy_cutoff):
+                fresh += 1
+                url, details = batch[item_id]
+                payload = alert_payload(item_id, details, url, settings)
+                if payload:
+                    report["matched"] += 1
+                    send_listing(hook, payload)
+                    report["alerts"] += 1
+                    seen.append(item_id)
+                    known.add(item_id)
+                    save(seen, legacy_cutoff)
+                    time.sleep(0.7)
+                    continue
+            seen.append(item_id)
+            known.add(item_id)
+        if not bootstrap:
+            save(seen, legacy_cutoff)
+    if not fetched:
         raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
-    if not STATE.exists():
-        request = Request(hook, headers={"Accept": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"})
+    if bootstrap:
+        request = Request(hook, headers={"Accept": "application/json"})
         try:
             with urlopen(request, timeout=15) as response:
                 if not json.load(response).get("channel_id"):
                     raise RuntimeError("Discord nie potwierdził kanału webhooka.")
         except HTTPError as error:
             raise SystemExit(f"Sprawdzenie webhooka Discord: HTTP {error.code}.") from None
-        print("Discord potwierdził kanał webhooka.")
-    if not STATE.exists():
-        save(list(cards))
-        print(f"Zapisano punkt startowy: {len(cards)} pozycji.")
-        return
-    previous = json.loads(STATE.read_text(encoding="utf-8"))
-    if isinstance(previous, list):
-        seen = previous
-        # One migration pass records the expanded history without alerting old batches.
-        legacy_cutoff = max(map(int, seen), default=0)
-    else:
-        seen = previous["seen"]
-        legacy_cutoff = previous.get("legacy_cutoff")
-    known = set(seen)
-    if legacy_cutoff is not None:
-        seen.extend(item_id for item_id in cards if item_id not in known and int(item_id) <= legacy_cutoff)
-        known = set(seen)
-        if not report["errors"]:
-            legacy_cutoff = None
-        save(seen, legacy_cutoff)
-    sent = 0
-    fresh = 0
-    for item_id in sorted(cards, key=int):
-        if item_id in known:
-            continue
-        fresh += 1
-        url, details = cards[item_id]
-        payload = alert_payload(item_id, details, url, settings)
-        if payload:
-            report["matched"] += 1
-            request = Request(hook + "?wait=true", json.dumps(payload).encode(),
-                              {"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"}, method="POST")
-            for attempt in range(2):
-                try:
-                    with urlopen(request, timeout=15) as response:
-                        response.read()
-                    break
-                except HTTPError as error:
-                    if error.code != 429 or attempt:
-                        raise SystemExit(f"Wysyłka na Discord: HTTP {error.code}.") from None
-                    try:
-                        delay = float(error.headers.get("Retry-After", "2"))
-                    except ValueError:
-                        delay = 2
-                    if not 0 <= delay <= 15:
-                        raise SystemExit("Discord ograniczył wysyłkę. Kolejny skan ponowi próbę.") from None
-                    time.sleep(delay + 0.5)
-            sent += 1
-            report["alerts"] += 1
-            time.sleep(0.7)
-        seen.append(item_id)
-        save(seen, legacy_cutoff)
-    print(f"Karty: {len(cards)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {sent}.")
+    save(seen, legacy_cutoff if report["errors"] else None)
+    print(f"Karty: {len(fetched)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {report['alerts']}.")
 
 
 if __name__ == "__main__":

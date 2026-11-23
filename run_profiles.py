@@ -13,7 +13,7 @@ def national_env(original):
  for name in ('DISCORD_DEALS_WEBHOOK_URL','TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID'):env.pop(name,None)
  return env
 
-def run_local(script, env):
+def run_local(script, env, fast_flag="OLX_LOCAL_FAST_SCAN"):
  command=[sys.executable,script]
  started=time.monotonic()
  result=subprocess.run(command,env=env).returncode
@@ -22,9 +22,9 @@ def run_local(script, env):
  # two local scans concurrently against the same saved state.
  if result in (0,1) and delay>0:
   time.sleep(delay)
-  fast=subprocess.run(command,env={**env,"OLX_LOCAL_FAST_SCAN":"1"}).returncode
+  fast=subprocess.run(command,env={**env,fast_flag:"1"}).returncode
   if fast:
-   print("Niepełne dodatkowe sprawdzenie Bielska-Białej. Pełny skan wróci w następnym cyklu.",flush=True)
+   print("Niepełne dodatkowe sprawdzenie OLX. Pełny skan wróci w następnym cyklu.",flush=True)
  return result
 
 def main():
@@ -36,10 +36,10 @@ def main():
   if local.get("SETTINGS_URL"):
    national=national_env(local)
    local["DAMAGED_ROUTED_NATIONALLY"]="1"
-   whole_country=pool.submit(subprocess.run,[sys.executable,script],env=national)
+   whole_country=pool.submit(run_local,script,national,"OLX_NATIONAL_FAST_SCAN")
   else:
    whole_country=None
   local_result=pool.submit(run_local,script,local).result()
-  return max(local_result,whole_country.result().returncode) if whole_country else local_result
+  return max(local_result,whole_country.result()) if whole_country else local_result
 
 if __name__=='__main__':sys.exit(main())

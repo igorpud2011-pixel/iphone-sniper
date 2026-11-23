@@ -39,7 +39,7 @@ class NationwideCoverageTests(unittest.TestCase):
                 self.assertEqual(report["searches_ok"], 3)
                 self.assertEqual(report["errors"], [])
             sent = [json.loads(call.args[0].data)["embeds"][0]["url"] for call in post.call_args_list]
-            self.assertEqual([urlsplit(url).path for url in sent], ["/items/110-iphone-13", "/items/105-iphone-13", "/items/120-iphone-13"])
+            self.assertEqual([urlsplit(url).path for url in sent], ["/items/110-iphone-13", "/items/120-iphone-13", "/items/105-iphone-13"])
 
     def test_vinted_respects_rate_limit_and_delivers_from_available_page(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(vinted, "STATE", Path(temp) / "state.json"), patch.object(vinted, "fetch_catalog") as fetch, patch.object(vinted, "urlopen") as post, patch.object(vinted.time, "sleep"):
@@ -51,3 +51,17 @@ class NationwideCoverageTests(unittest.TestCase):
             self.assertEqual(report["alerts"], 1)
             self.assertIn("429", report["errors"][0])
             post.assert_called_once()
+
+
+    def test_vinted_sends_first_page_before_reading_second(self):
+        with tempfile.TemporaryDirectory() as temp, patch.object(vinted, "STATE", Path(temp) / "state.json"), patch.object(vinted, "send_listing") as send, patch.object(vinted.time, "sleep"):
+            vinted.save(["100"])
+            def fetch(page):
+                if page == 1:
+                    return cards(101)
+                send.assert_called_once()
+                return cards(101)
+            report = dict(fetched=0, matched=0, alerts=0, searches_ok=0, errors=[])
+            with patch.object(vinted, "fetch_catalog", side_effect=fetch):
+                vinted.scan("https://example.test/webhook", {"models": ["13"], "min": 0, "max": None}, report)
+            self.assertEqual(report["alerts"], 1)

@@ -40,18 +40,18 @@ jobs:
       - name: Skanuj katalog Vinted
         run: |
           if ! [[ "$SESSION_MINUTES" =~ ^[0-9]+$ ]] || [ "$SESSION_MINUTES" -lt 1 ] || [ "$SESSION_MINUTES" -gt 300 ]; then SESSION_MINUTES=20; fi
-          scans=$(((SESSION_MINUTES + 2) / 3))
+          scans=$(((SESSION_MINUTES + 1) / 2))
           result=0
           for ((scan=1; scan<=scans; scan++)); do
             started=$SECONDS
             echo "::group::Skan $scan/$scans"
-            timeout 180s python3 -u vinted_monitor.py && result=0 || result=$?
+            timeout 110s python3 -u vinted_monitor.py && result=0 || result=$?
             echo "::endgroup::"
             if git fetch origin main --quiet && ! git diff --quiet HEAD origin/main -- vinted_monitor.py bot.py requirements.txt .github/workflows/vinted.yml .github/workflows/monitor.yml; then
               echo "Wykryto zmianę kodu. Zapisuję stan."
               break
             fi
-            delay=$((180 - (SECONDS - started)))
+            delay=$((120 - (SECONDS - started)))
             if [ "$scan" -lt "$scans" ] && [ "$delay" -gt 0 ]; then sleep "$delay"; fi
           done
           exit "$result"
