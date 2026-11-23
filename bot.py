@@ -114,7 +114,9 @@ def load_config() -> dict[str, Any]:
             "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone/?" + urlencode(query)})
         if nationwide:
             # Extra pages catch fast-moving nationwide listings without widening the filters.
+            broad = config["searches"][-1]
             family_searches = config["searches"][:-1]
+            config["searches"].insert(0, {**broad, "name": broad["name"] + " · strona 2", "url": broad["url"] + "&page=2"})
             start = int(time.time() // 60) % len(family_searches)
             extra = (family_searches[start:] + family_searches[:start])[:3]
             config["searches"].extend(
@@ -147,7 +149,7 @@ def load_config() -> dict[str, Any]:
     # Keep a single request per scan: RSS-Bridge may crawl detail pages on cache miss.
     primary = [search for search in searches if search.get("source") == "rss"]
     if primary and is_fast_local_scan():
-        broad = next((search for search in primary if "/q-iphone/?" in search["url"]), None)
+        broad = next((search for search in primary if "/q-iphone/?" in search["url"] and "page" not in dict(parse_qsl(urlsplit(search["url"]).query))), None)
         if broad is None:
             broad = {**primary[0], "name": f'iPhone · {config["area_city"]} +{config["area_radius"]} km'}
             broad["url"] = re.sub(r"/q-iphone-[^/]+/", "/q-iphone/", broad["url"])
@@ -155,7 +157,7 @@ def load_config() -> dict[str, Any]:
         config["request_timeout_seconds"] = min(10, int(config.get("request_timeout_seconds", 20)))
         return config
     if primary and config.get("supplementary_rss_bridge", True):
-        broad = next((search for search in primary if "/q-iphone/?" in search["url"]), None)
+        broad = next((search for search in primary if "/q-iphone/?" in search["url"] and "page" not in dict(parse_qsl(urlsplit(search["url"]).query))), None)
         if broad is None:
             broad = dict(primary[0])
             broad["url"] = re.sub(r"/q-iphone-[^/]+/", "/q-iphone/", broad["url"])
@@ -844,6 +846,7 @@ def _scan_once(report: dict[str, Any]) -> int:
             return fetch_search(session, search, min(20, int(config.get("request_timeout_seconds", 20))))
 
     successfully_notified: set[str] = set()
+    previously_notified = set(state.get("notified_ids", []))
 
     def checkpoint() -> None:
         pending = {x.listing_id for x in found} - successfully_notified
@@ -884,7 +887,7 @@ def _scan_once(report: dict[str, Any]) -> int:
                     if listing.listing_id in seen:
                         # A later provider may supply a description missing on first detection.
                         # Recheck only ads actually delivered to the main channel, not baseline ads.
-                        if listing.listing_id in state.get("notified_ids", []) and candidate_flags[id(listing)]:
+                        if (listing.listing_id in previously_notified or listing.listing_id in successfully_notified) and candidate_flags[id(listing)]:
                             before = json.dumps(state.get("secondary_delivered", {}), sort_keys=True)
                             if not send_secondary_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
                                 report["errors"].append("Nie dostarczono dodatkowego alertu; ponowię.")
@@ -902,7 +905,6 @@ def _scan_once(report: dict[str, Any]) -> int:
                         try:
                             if send_routed_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
                                 successfully_notified.add(listing.listing_id)
-                                checkpoint()
                                 LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
                         except Exception as exc:
                             LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
