@@ -116,7 +116,9 @@ def alert_payload(item_id, details, url, settings):
         elif not line.startswith("Cennik:"):
             lines.append(line)
     lines.append(f"⚡ **Bot wykrył:** <t:{int(time.time())}:t>")
-    return {"embeds": [{"title": f"📱 {title}"[:250], "url": url,
+    return {"username": "Łowca • Vinted",
+            "avatar_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4f1.png",
+            "embeds": [{"title": f"📱 {title}"[:250], "url": url,
             "description": "\n".join(lines), "color": 0x007782,
             "footer": {"text": "iPhone Sniper • Vinted • Wycena bez prowizji, napraw i wysyłki"}}],
             "allowed_mentions": {"parse": []}}
