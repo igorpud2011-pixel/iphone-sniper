@@ -31,3 +31,8 @@ class OfferButtonTests(unittest.TestCase):
         payload=post.call_args.kwargs['json']
         self.assertEqual(len(payload['embeds']),1)
         self.assertTrue(all(c['style']==5 for c in payload['components'][0]['components']))
+
+
+        purchase = payload['components'][0]['components'][1]
+        self.assertEqual(purchase['label'], 'Otwórz zakup na OLX')
+        self.assertEqual(purchase['url'], 'https://www.olx.pl/d/oferta/test-ID123.html')

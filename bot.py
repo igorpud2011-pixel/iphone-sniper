@@ -633,10 +633,11 @@ def offer_components(listing: Listing) -> list[dict[str, Any]]:
         return []
     # URL fragments stay in the browser, out of server requests and referrers.
     origin = "https://iphone-sniper-control-igor.splendidtapioca8.chatgpt.site"
-    fragment = urlencode({"url": urlunsplit(("https", "www.olx.pl", parsed.path, "", "")), "price": suggested_offer(listing)})
+    listing_url = urlunsplit(("https", "www.olx.pl", parsed.path, "", ""))
+    fragment = urlencode({"url": listing_url, "price": suggested_offer(listing)})
     return [{"type":1,"components":[
         {"type":2,"style":5,"label":"💬 Zaproponuj cenę","url":origin+"/offer#"+fragment},
-        {"type":2,"style":5,"label":"Otwórz OLX","url":listing.url}]}]
+        {"type":2,"style":5,"label":"Otwórz zakup na OLX","url":listing_url}]}]
 
 
 def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
@@ -678,6 +679,9 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     timing = f"⚡ Wykryto <t:{timestamp}:t> · <t:{timestamp}:R>"
     if listing.fetch_seconds is not None:
         timing += f" · odczyt {listing.fetch_seconds:.1f} s"
+    queued_seconds = max(0, int(time.time()) - timestamp)
+    if queued_seconds:
+        timing += f" · do wysyłki {queued_seconds} s"
     body.append(timing)
     testing = listing.listing_id in {"test", "pricing-test"}
     if testing:
@@ -698,6 +702,9 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
         headers["Authorization"] = "Bearer " + os.getenv("SETTINGS_KEY", "")
     response = requests.post(webhook_url, headers=headers, params={"with_components":"true"}, json={"username":"Łowca • OLX", "avatar_url":"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f50e.png", "content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
     response.raise_for_status()
+    if listing.detected_at:
+        LOG.info("Alert OLX %s: odbiorca przyjął żądanie po %.1f s od wykrycia.",
+                 listing.listing_id, max(0.0, time.time() - listing.detected_at))
 
 
 def send_telegram(token: str, chat_id: str, listing: Listing, timeout: int) -> None:
