@@ -83,9 +83,9 @@ class Catalog(HTMLParser):
             self.cards[match[1]] = (ORIGIN + path, title)
 
 
-def save(seen):
+def save(seen, legacy_cutoff=None):
     temporary = STATE.with_suffix(".tmp")
-    temporary.write_text(json.dumps(seen[-2500:]), encoding="utf-8")
+    temporary.write_text(json.dumps({"seen": seen[-8000:], "legacy_cutoff": legacy_cutoff}), encoding="utf-8")
     temporary.replace(STATE)
 
 
@@ -160,25 +160,48 @@ def settings_request(path, data=None):
     return response.json()
 
 
-def scan(hook, settings, report):
+CATALOG_PAGES = 3
 
-    query = urlencode({"search_text": "iPhone", "order": "newest_first"})
+
+def fetch_catalog(page_number):
+    query = urlencode({"search_text": "iPhone", "order": "newest_first", "page": page_number})
     request = Request(ORIGIN + "/catalog?" + query, headers={
         "User-Agent": "iPhoneSniper/1.0 (public listing alerts)",
         "Accept": "text/html",
     })
-    try:
-        with urlopen(request, timeout=25) as response:
-            page = response.read(12_000_000)
-    except HTTPError as error:
-        raise SystemExit(f"Katalog Vinted: HTTP {error.code}.") from None
+    with urlopen(request, timeout=15) as response:
+        page = response.read(12_000_000)
     catalog = Catalog()
     catalog.feed(page.decode("utf-8", errors="replace"))
-    report["fetched"] = len(catalog.cards)
-    if not catalog.cards:
+    return catalog.cards
+
+
+def scan(hook, settings, report):
+    cards = {}
+    report["searches_total"] = CATALOG_PAGES
+    for number in range(1, CATALOG_PAGES + 1):
+        try:
+            batch = fetch_catalog(number)
+        except HTTPError as error:
+            report["errors"].append(f"Katalog Vinted, strona {number}: HTTP {error.code}.")
+            if error.code in (403, 429):
+                break
+            continue
+        except (OSError, TimeoutError) as error:
+            report["errors"].append(f"Katalog Vinted, strona {number}: {type(error).__name__}.")
+            continue
+        if not batch:
+            report["errors"].append(f"Katalog Vinted: brak rozpoznanych kart na stronie {number}.")
+            break
+        report["searches_ok"] += 1
+        if batch.keys() <= cards.keys():
+            break
+        for item_id, card in batch.items():
+            cards.setdefault(item_id, card)
+    report["fetched"] = len(cards)
+    if not cards:
         raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
-    report["searches_ok"] = 1
-    if not STATE.exists() or os.environ.get("GITHUB_EVENT_NAME") in {"push", "workflow_dispatch"}:
+    if not STATE.exists():
         request = Request(hook, headers={"Accept": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"})
         try:
             with urlopen(request, timeout=15) as response:
@@ -188,19 +211,31 @@ def scan(hook, settings, report):
             raise SystemExit(f"Sprawdzenie webhooka Discord: HTTP {error.code}.") from None
         print("Discord potwierdził kanał webhooka.")
     if not STATE.exists():
-        save(list(catalog.cards))
-        print(f"Zapisano punkt startowy: {len(catalog.cards)} pozycji.")
+        save(list(cards))
+        print(f"Zapisano punkt startowy: {len(cards)} pozycji.")
         return
-    seen = json.loads(STATE.read_text(encoding="utf-8"))
+    previous = json.loads(STATE.read_text(encoding="utf-8"))
+    if isinstance(previous, list):
+        seen = previous
+        # One migration pass records the expanded history without alerting old batches.
+        legacy_cutoff = max(map(int, seen), default=0)
+    else:
+        seen = previous["seen"]
+        legacy_cutoff = previous.get("legacy_cutoff")
     known = set(seen)
-    cutoff = max(map(int, seen), default=0)
+    if legacy_cutoff is not None:
+        seen.extend(item_id for item_id in cards if item_id not in known and int(item_id) <= legacy_cutoff)
+        known = set(seen)
+        if not report["errors"]:
+            legacy_cutoff = None
+        save(seen, legacy_cutoff)
     sent = 0
     fresh = 0
-    for item_id in sorted(catalog.cards, key=int):
-        if item_id in known or int(item_id) <= cutoff:
+    for item_id in sorted(cards, key=int):
+        if item_id in known:
             continue
         fresh += 1
-        url, details = catalog.cards[item_id]
+        url, details = cards[item_id]
         payload = alert_payload(item_id, details, url, settings)
         if payload:
             report["matched"] += 1
@@ -225,8 +260,8 @@ def scan(hook, settings, report):
             report["alerts"] += 1
             time.sleep(0.7)
         seen.append(item_id)
-        save(seen)
-    print(f"Karty: {len(catalog.cards)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {sent}.")
+        save(seen, legacy_cutoff)
+    print(f"Karty: {len(cards)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {sent}.")
 
 
 if __name__ == "__main__":
@@ -239,7 +274,7 @@ if __name__ == "__main__":
         settings = settings_request("settings")
         if settings["enabled"]:
             scan(hook, settings, report)
-            report["status"] = "ok"
+            report["status"] = "partial" if report["errors"] else "ok"
         else:
             report["status"] = "paused"
             print("Alerty Vinted wstrzymane w ustawieniach.")
@@ -254,4 +289,3 @@ if __name__ == "__main__":
             settings_request("health", report)
         except Exception:
             print("Nie udało się przesłać statusu Vinted do panelu.")
-
