@@ -17,14 +17,19 @@ def run_local(script, env, fast_flag="OLX_LOCAL_FAST_SCAN"):
  command=[sys.executable,script]
  started=time.monotonic()
  result=subprocess.run(command,env=env).returncode
- delay=30-(time.monotonic()-started)
- # A slow or failed full scan gets its usual minute to recover. Never run
- # two local scans concurrently against the same saved state.
- if result in (0,1) and delay>0:
+ # Keep scans for each profile sequential so they share one history safely.
+ if result not in (0,1):
+  return result
+ checkpoints=(20,40) if fast_flag=="OLX_LOCAL_FAST_SCAN" else (30,)
+ for offset in checkpoints:
+  delay=started+offset-time.monotonic()
+  if delay<=0:
+   continue
   time.sleep(delay)
   fast=subprocess.run(command,env={**env,fast_flag:"1"}).returncode
   if fast:
    print("Niepełne dodatkowe sprawdzenie OLX. Pełny skan wróci w następnym cyklu.",flush=True)
+   break
  return result
 
 def main():

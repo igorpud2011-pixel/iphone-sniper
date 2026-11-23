@@ -25,7 +25,7 @@ class ModelTimingTests(unittest.TestCase):
         with patch.dict('os.environ',{'SETTINGS_URL':'https://example.com/settings','SETTINGS_KEY':'test'}), patch.object(bot.requests,'get') as get:
             get.return_value.json.return_value=remote
             cfg=bot.load_config()
-        self.assertEqual(len(cfg['searches']),5)
+        self.assertEqual(len(cfg['searches']),6)
         self.assertEqual(cfg['searches'][-1]['source'],'rss_bridge')
         self.assertEqual(cfg['model_ids'],remote['models'])
         self.assertFalse(bot.is_flip_candidate(bot.Listing('id','iPhone 13 128 GB',''),cfg))
@@ -68,3 +68,4 @@ class ModelTimingTests(unittest.TestCase):
         self.assertIn('2.51 s',result)
         self.assertIn('<t:1794751200:R>',result)
         self.assertNotIn('72 min',result)
+

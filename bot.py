@@ -114,12 +114,13 @@ def load_config() -> dict[str, Any]:
         # Additional first-page search catches titles missed by family searches.
         config["searches"].append({"name": f"iPhone · {city} +{radius} km", "source":"rss",
             "url": f"https://www.olx.pl/elektronika/telefony/{area_path}q-iphone/?" + urlencode(query)})
+        # Start with the broad first page in both profiles. Keep the same city,
+        # radius and private-seller filters on its second page.
+        broad = config["searches"][-1]
+        family_searches = config["searches"][:-1]
+        config["searches"] = [broad, *family_searches,
+                              {**broad, "name": broad["name"] + " · strona 2", "url": broad["url"] + "&page=2"}]
         if nationwide:
-            # Extra pages catch fast-moving nationwide listings without widening the filters.
-            broad = config["searches"][-1]
-            family_searches = config["searches"][:-1]
-            config["searches"] = [broad, *family_searches,
-                                  {**broad, "name": broad["name"] + " · strona 2", "url": broad["url"] + "&page=2"}]
             start = int(time.time() // 60) % len(family_searches)
             extra = (family_searches[start:] + family_searches[:start])[:3]
             config["searches"].extend(

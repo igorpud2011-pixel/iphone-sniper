@@ -16,14 +16,15 @@ def cards(*ids):
 
 
 class NationwideCoverageTests(unittest.TestCase):
-    def test_olx_always_fetches_second_broad_page_only_for_national_profile(self):
+    def test_olx_fetches_second_broad_page_for_both_profiles(self):
         settings = {"models": ["13"], "city": "Bielsko-Biała", "radius": 30, "min": 0, "enabled": True}
         with patch.dict(os.environ, {"SETTINGS_URL": "https://example.test/settings", "SETTINGS_KEY": "test"}, clear=True), patch.object(bot.requests, "get") as get:
             get.return_value.json.return_value = {**settings, "nationwide": False}
             local = bot.load_config()
             get.return_value.json.return_value = {**settings, "nationwide": True}
             national = bot.load_config()
-        for config, count in ((local, 0), (national, 1)):
+        for config, count in ((local, 1), (national, 1)):
+            self.assertTrue(urlsplit(config["searches"][0]["url"]).path.endswith("/q-iphone/"))
             urls = [urlsplit(s["url"]) for s in config["searches"]]
             self.assertEqual(sum(u.path.endswith("/q-iphone/") and parse_qs(u.query).get("page") == ["2"] for u in urls), count)
 
