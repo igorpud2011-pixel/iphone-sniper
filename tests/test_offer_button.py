@@ -27,7 +27,7 @@ class OfferButtonTests(unittest.TestCase):
         ad=bot.Listing('id','iPhone 11 64GB','https://www.olx.pl/d/oferta/test-ID123.html?tracking=1')
         with patch.object(bot,'resale_table',return_value=self.table()),patch.object(bot.requests,'post') as post:
             bot.send_discord('https://example.com',ad,20)
-        self.assertEqual(post.call_args.kwargs['params'],{'with_components':'true'})
+        self.assertEqual(post.call_args.kwargs['params'],{'with_components':'true','wait':'true'})
         payload=post.call_args.kwargs['json']
         self.assertEqual(len(payload['embeds']),1)
         self.assertTrue(all(c['style']==5 for c in payload['components'][0]['components']))

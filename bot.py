@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import html
 import json
@@ -19,14 +18,17 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
+from threading import Lock
 from typing import Any
 from urllib.parse import urljoin, urlsplit, urlunsplit, urlencode, parse_qsl
 
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+
+from polling import remaining_slots, retry_delay, stream_workers, trace
 
 VERSION = "1.3.0"
 
@@ -160,6 +162,11 @@ def load_config() -> dict[str, Any]:
         config["searches"] = [broad]
         config["request_timeout_seconds"] = min(10, int(config.get("request_timeout_seconds", 20)))
         return config
+    if primary and os.getenv("OLX_POLL_WINDOW") == "1" and not any("/q-iphone/?" in search["url"] for search in primary):
+        broad = {**primary[0], "name": "iPhone · wszystkie wybrane modele"}
+        broad["url"] = re.sub(r"/q-iphone-[^/]+/", "/q-iphone/", broad["url"])
+        config["searches"].insert(0, broad)
+        primary.insert(0, broad)
     if primary and config.get("supplementary_rss_bridge", True):
         broad = next((search for search in primary if "/q-iphone/?" in search["url"] and "page" not in dict(parse_qsl(urlsplit(search["url"]).query))), None)
         if broad is None:
@@ -700,9 +707,11 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     destination = urlsplit(webhook_url)
     if destination.path == "/relay/polska" and destination.scheme == "https" and destination.netloc == settings_origin.netloc:
         headers["Authorization"] = "Bearer " + os.getenv("SETTINGS_KEY", "")
-    response = requests.post(webhook_url, headers=headers, params={"with_components":"true"}, json={"username":"Łowca • OLX", "avatar_url":"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f50e.png", "content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
+    response = requests.post(webhook_url, headers=headers, params={"with_components":"true","wait":"true"}, json={"username":"Łowca • OLX", "avatar_url":"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f50e.png", "content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
     response.raise_for_status()
     if listing.detected_at:
+        trace(os.getenv("ALERT_PROFILE", "local"), "accepted",
+              since_detection=round(max(0.0, time.time() - listing.detected_at), 2))
         LOG.info("Alert OLX %s: odbiorca przyjął żądanie po %.1f s od wykrycia.",
                  listing.listing_id, max(0.0, time.time() - listing.detected_at))
 
@@ -818,6 +827,61 @@ def send_routed_alert(listing: Listing, timeout: int, state: dict[str, Any]) -> 
     return success
 
 
+def source_reads(searches, fetch_one, watch):
+    """Fetch in parallel. A single consumer owns delivery receipts and state."""
+    head = next((i for i, search in enumerate(searches)
+                 if search.get("source") == "rss" and "/q-iphone/?" in search["url"]
+                 and "page" not in dict(parse_qsl(urlsplit(search["url"]).query))), None)
+    profile = os.getenv("ALERT_PROFILE", "local")
+
+    pause_lock = Lock()
+    active_pauses = {}
+    timer_file = STATE_PATH.parent / (".olx-pauses-" + ("polska" if profile == "polska" else "local") + ".json")
+    if watch and timer_file.exists():
+        try:
+            active_pauses = json.loads(timer_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            LOG.warning("Nie udało się odczytać przerwy źródła OLX.")
+
+    def poll(index, emit):
+        clock_start = time.monotonic()
+        source = searches[index].get("source", "html")
+
+        def read(repeated):
+            started = time.time()
+            with pause_lock:
+                if active_pauses.get(source, 0) > started:
+                    if not repeated:
+                        emit((index, [], RuntimeError("Źródło OLX w przerwie po ograniczeniu dostępu."), False))
+                    return
+            try:
+                items = fetch_one(searches[index])
+            except Exception as error:
+                emit((index, [], error, repeated))
+                if isinstance(error, requests.HTTPError) and error.response is not None:
+                    if error.response.status_code in (403, 429):
+                        until = time.time() + retry_delay(error.response.headers.get("Retry-After"), 300)
+                        with pause_lock:
+                            active_pauses[source] = max(active_pauses.get(source, 0), until)
+                            if watch:
+                                timer_file.parent.mkdir(parents=True, exist_ok=True)
+                                temporary = timer_file.with_suffix(".tmp")
+                                temporary.write_text(json.dumps(active_pauses), encoding="utf-8")
+                                temporary.replace(timer_file)
+                return
+            if index == head:
+                trace(profile, "front_read", started=round(started, 3), cards=len(items))
+            emit((index, items, None, repeated))
+
+        read(False)
+        if watch and index == head:
+            for _ in remaining_slots(clock_start):
+                read(True)
+
+    order = sorted(range(len(searches)), key=lambda index: index != head)
+    yield from stream_workers([partial(poll, index) for index in order], min(8, len(searches)))
+
+
 def _scan_once(report: dict[str, Any]) -> int:
     LOG.info("iPhone Sniper %s", VERSION)
     config = load_config()
@@ -827,10 +891,10 @@ def _scan_once(report: dict[str, Any]) -> int:
         return 0
     report["searches_total"] = len(config["searches"])
     state = load_state()
-    state["_secondary_sent"] = 0
     if state.get("id_format_version") != 2:
         LOG.info("Aktualizacja identyfikatorów: ustalam nową historię bez alertów o starych ofertach.")
         state = {"initialized": False, "seen_ids": [], "initialized_searches": [], "id_format_version": 2}
+    state["_secondary_sent"] = 0
     # Only the installation's original searches may establish a silent baseline.
     # Editing city/price/models must never silently consume new listings again.
     if "bootstrap_searches" not in state:
@@ -845,7 +909,7 @@ def _scan_once(report: dict[str, Any]) -> int:
         initialized_searches.update(search["url"] for search in config["searches"])
     found: list[Listing] = []
     fresh_ids: list[str] = []
-    successful_searches = 0
+    successful: set[int] = set()
 
     def fetch_one(search: dict[str, str]) -> list[Listing]:
         with requests.Session() as session:
@@ -871,63 +935,54 @@ def _scan_once(report: dict[str, Any]) -> int:
         state["initialized"] = True
         save_state(state, int(config.get("max_remembered_ids", 12000)))
 
-    # Consume each completed source immediately. A slow supplementary feed must
-    # not hold back notifications already available from a healthy source.
-    with ThreadPoolExecutor(max_workers=min(8, len(config["searches"]))) as executor:
-        futures = {executor.submit(fetch_one, search): index for index, search in enumerate(config["searches"])}
-        for future in as_completed(futures):
-            index = futures[future]
-            search = config["searches"][index]
-            try:
-                listings = future.result()
-                report["fetched"] += len(listings)
-                bootstrap = search["url"] in initial_bootstrap and config.get("bootstrap_without_alerts", True)
-                bootstrap_searches.discard(search["url"])
-                initialized_searches.add(search["url"])
-                successful_searches += 1
-                report["searches_ok"] = successful_searches
-                LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
-                candidate_flags = {id(item): is_flip_candidate(item, config) for item in listings}
-                LOG.info("Diagnostyka: %d już znanych, %d odrzuconych przez filtry.",
-                         sum(x.listing_id in seen for x in listings), sum(not value for value in candidate_flags.values()))
-                candidates = [item for item in listings if candidate_flags[id(item)]]
-                LOG.info("Klasyfikacja źródła: %d pasujących; %d uszkodzonych; %d okazji >=100 zł.",
-                    len(candidates), sum(is_damaged(item) for item in candidates),
-                    sum((deal_discount(item) or 0) >= 100 for item in candidates))
-                for listing in listings:
-                    if listing.listing_id in seen:
-                        # A later provider may supply a description missing on first detection.
-                        # Recheck only ads actually delivered to the main channel, not baseline ads.
-                        if (listing.listing_id in previously_notified or listing.listing_id in successfully_notified) and candidate_flags[id(listing)]:
-                            before = json.dumps(state.get("secondary_delivered", {}), sort_keys=True)
-                            if not send_secondary_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
-                                report["errors"].append("Nie dostarczono dodatkowego alertu; ponowię.")
-                            if before != json.dumps(state.get("secondary_delivered", {}), sort_keys=True):
-                                checkpoint()
-                        continue
-                    fresh_ids.append(listing.listing_id)
-                    if bootstrap:
-                        seen.add(listing.listing_id)
-                    elif candidate_flags[id(listing)]:
-                        seen.add(listing.listing_id)
-                        rejected.discard(listing.listing_id)
-                        found.append(listing)
-                        # Deliver while slower providers are still being fetched.
-                        try:
-                            if send_routed_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
-                                successfully_notified.add(listing.listing_id)
-                                LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
-                        except Exception as exc:
-                            LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
-                        finally:
+    for index, listings, error, repeated in source_reads(config["searches"], fetch_one, os.getenv("OLX_POLL_WINDOW") == "1"):
+        search = config["searches"][index]
+        try:
+            if error is not None:
+                raise error
+            report["fetched"] += len(listings)
+            pending_baselines = bootstrap_searches if repeated else initial_bootstrap
+            bootstrap = search["url"] in pending_baselines and config.get("bootstrap_without_alerts", True)
+            bootstrap_searches.discard(search["url"])
+            initialized_searches.add(search["url"])
+            successful.add(index)
+            report["searches_ok"] = len(successful)
+            LOG.info("%s: odczytano %d ofert; pierwsze skanowanie: %s.", search.get("name", "OLX"), len(listings), bootstrap)
+            # Newly visible offers go to Discord before rechecking known listings.
+            for listing in sorted(listings, key=lambda item: item.listing_id in seen):
+                if listing.listing_id in seen:
+                    # A later provider may supply a description missing on first detection.
+                    # Recheck only ads actually delivered to the main channel, not baseline ads.
+                    if (listing.listing_id in previously_notified or listing.listing_id in successfully_notified) and is_flip_candidate(listing, config):
+                        before = state["_secondary_sent"]
+                        if not send_secondary_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
+                            report["errors"].append("Nie dostarczono dodatkowego alertu; ponowię.")
+                        if before != state["_secondary_sent"]:
                             checkpoint()
-                    else:
-                        rejected.add(listing.listing_id)
-            except Exception as exc:
-                report["errors"].append(f"Wyszukiwanie {index+1}: {type(exc).__name__}")
-                LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
+                    continue
+                fresh_ids.append(listing.listing_id)
+                if bootstrap:
+                    seen.add(listing.listing_id)
+                elif is_flip_candidate(listing, config):
+                    seen.add(listing.listing_id)
+                    rejected.discard(listing.listing_id)
+                    found.append(listing)
+                    # Deliver while slower providers are still being fetched.
+                    try:
+                        if send_routed_alert(listing, int(config.get("request_timeout_seconds", 20)), state):
+                            successfully_notified.add(listing.listing_id)
+                            LOG.info("Wysłano alert: %s | %s", listing.title, listing.price)
+                    except Exception as exc:
+                        LOG.error("Nie wysłano alertu dla '%s': %s", listing.title, exc)
+                    finally:
+                        checkpoint()
+                else:
+                    rejected.add(listing.listing_id)
+        except Exception as exc:
+            report["errors"].append(f"Wyszukiwanie {index+1}: {type(exc).__name__}")
+            LOG.error("Nie udało się sprawdzić wyszukiwania '%s': %s", search.get("name", "OLX"), exc)
 
-    if successful_searches == 0:
+    if not successful:
         LOG.error("Żadne wyszukiwanie nie zadziałało. Stan pozostaje bez zmian.")
         return 2
 
@@ -939,7 +994,7 @@ def _scan_once(report: dict[str, Any]) -> int:
         report["errors"].append("Nie wszystkie alerty zostały dostarczone; bot ponowi wysyłkę.")
     checkpoint()
     LOG.info("Koniec sprawdzania. Nowe oferty: %d; potwierdzone wysyłki główne: %d; dodatkowe: %d.", len(found), len(successfully_notified), state.get("_secondary_sent", 0))
-    return 0 if not report["errors"] and len(successfully_notified) == len(found) and successful_searches == len(config["searches"]) else 1
+    return 0 if not report["errors"] and len(successfully_notified) == len(found) and len(successful) == len(config["searches"]) else 1
 
 
 def publish_status(report: dict[str, Any]) -> None:
@@ -995,6 +1050,7 @@ def main() -> int:
     if not args.loop:
         return run_once()
 
+    os.environ["OLX_POLL_WINDOW"] = "1"
     config = load_config()
     interval = max(60, int(config.get("poll_interval_seconds", 90)))
     LOG.info("Tryb ciągły. Odstęp między sprawdzeniami: %d s.", interval)

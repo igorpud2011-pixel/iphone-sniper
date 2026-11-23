@@ -1,50 +1,38 @@
-"""Run isolated local and nationwide scans without sharing mutable bot state."""
-import os,subprocess,sys,time
+"""Run local and nationwide OLX monitors in separate processes and state files."""
+import os
+import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.parse import urlsplit,urlunsplit,parse_qsl,urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 
 def national_env(original):
- env=dict(original);parts=urlsplit(env['SETTINGS_URL'])
- query=dict(parse_qsl(parts.query));query['profile']='polska'
- env['SETTINGS_URL']=urlunsplit((parts.scheme,parts.netloc,parts.path,urlencode(query),''))
- env['ALERT_PROFILE']='polska'
- env['DISCORD_WEBHOOK_URL']=urlunsplit((parts.scheme,parts.netloc,'/relay/polska','',''))
- for name in ('DISCORD_DEALS_WEBHOOK_URL','TELEGRAM_BOT_TOKEN','TELEGRAM_CHAT_ID'):env.pop(name,None)
- return env
+    env = dict(original)
+    parts = urlsplit(env["SETTINGS_URL"])
+    query = dict(parse_qsl(parts.query))
+    query["profile"] = "polska"
+    env["SETTINGS_URL"] = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), ""))
+    env["ALERT_PROFILE"] = "polska"
+    env["DISCORD_WEBHOOK_URL"] = urlunsplit((parts.scheme, parts.netloc, "/relay/polska", "", ""))
+    for name in ("DISCORD_DEALS_WEBHOOK_URL", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"):
+        env.pop(name, None)
+    return env
 
-def run_local(script, env, fast_flag="OLX_LOCAL_FAST_SCAN"):
- command=[sys.executable,script]
- started=time.monotonic()
- result=subprocess.run(command,env=env).returncode
- # Keep scans for each profile sequential so they share one history safely.
- if result not in (0,1):
-  return result
- checkpoints=(20,40) if fast_flag=="OLX_LOCAL_FAST_SCAN" else (30,)
- for offset in checkpoints:
-  delay=started+offset-time.monotonic()
-  if delay<=0:
-   continue
-  time.sleep(delay)
-  fast=subprocess.run(command,env={**env,fast_flag:"1"}).returncode
-  if fast:
-   print("Niepełne dodatkowe sprawdzenie OLX. Pełny skan wróci w następnym cyklu.",flush=True)
-   break
- return result
 
 def main():
- script=str(Path(__file__).with_name('bot.py'))
- local=os.environ.copy()
- local["ALERT_PROFILE"]="local"
- local.pop("OLX_LOCAL_FAST_SCAN",None)
- with ThreadPoolExecutor(max_workers=2) as pool:
-  if local.get("SETTINGS_URL"):
-   national=national_env(local)
-   local["DAMAGED_ROUTED_NATIONALLY"]="1"
-   whole_country=pool.submit(run_local,script,national,"OLX_NATIONAL_FAST_SCAN")
-  else:
-   whole_country=None
-  local_result=pool.submit(run_local,script,local).result()
-  return max(local_result,whole_country.result()) if whole_country else local_result
+    script = str(Path(__file__).with_name("bot.py"))
+    local = {**os.environ, "ALERT_PROFILE": "local", "OLX_POLL_WINDOW": "1"}
+    local.pop("OLX_LOCAL_FAST_SCAN", None)
+    local.pop("OLX_NATIONAL_FAST_SCAN", None)
+    profiles = [local]
+    if local.get("SETTINGS_URL"):
+        profiles.append(national_env(local))
+        local["DAMAGED_ROUTED_NATIONALLY"] = "1"
+    with ThreadPoolExecutor(max_workers=len(profiles)) as pool:
+        runs = [pool.submit(subprocess.run, [sys.executable, "-u", script], env=env) for env in profiles]
+        return max(future.result().returncode for future in runs)
 
-if __name__=='__main__':sys.exit(main())
+
+if __name__ == "__main__":
+    sys.exit(main())

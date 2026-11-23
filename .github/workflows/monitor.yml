@@ -6,8 +6,10 @@ on:
     branches: [main]
     paths:
       - bot.py
-      - vinted_monitor.py
-      - .github/workflows/vinted.yml
+      - run_profiles.py
+      - polling.py
+      - config.json
+      - requirements.txt
       - tests/**
       - discord-control.mjs
       - discord-control.test.mjs
@@ -42,6 +44,8 @@ jobs:
     steps:
       - name: Pobierz kod
         uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Ustaw Pythona
         uses: actions/setup-python@v7
@@ -59,10 +63,10 @@ jobs:
       - name: Testy sterowania Discord
         run: node --test discord-control.test.mjs
 
-      - name: Sprawdź nowe ogłoszenia
-        id: scan
+      - name: Pierwsze trzy odczyty OLX
+        if: ${{ inputs.test_discord != true }}
         continue-on-error: true
-        env:
+        env: &olx_settings
           RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
           SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
           SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
@@ -73,6 +77,25 @@ jobs:
           DISCORD_DEALS_WEBHOOK_URL: ${{ secrets.DISCORD_DEALS_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: POLL_TRACE_DIR="$RUNNER_TEMP/odczyty-olx" python run_profiles.py
+
+      - name: Podsumuj odczyty i potwierdzenia
+        id: receipt
+        if: ${{ !cancelled() && inputs.test_discord != true }}
+        run: python3 polling.py "$RUNNER_TEMP/odczyty-olx"
+      - name: Pomiar · ${{ steps.receipt.outputs.sample }}
+        if: ${{ !cancelled() && inputs.test_discord != true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: odczyty-olx-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/odczyty-olx
+          retention-days: 1
+          if-no-files-found: warn
+
+      - name: Sprawdź nowe ogłoszenia
+        id: scan
+        continue-on-error: true
+        env: *olx_settings
         run: |
           if [ "$TEST_DISCORD" = "true" ]; then
             python bot.py --test-discord
@@ -96,7 +119,7 @@ jobs:
               # Detect source changes before a state push can pull them locally.
               git fetch origin main --quiet
               source_changed=false
-              if ! git diff --quiet HEAD origin/main -- . ':!data/seen.json' ':!data/seen-polska.json'; then
+              if ! git diff --quiet HEAD origin/main -- bot.py polling.py run_profiles.py config.json requirements.txt data/wilkowice_places.json tests .github/workflows/monitor.yml; then
                 source_changed=true
               fi
               git add data/seen*.json
@@ -156,16 +179,3 @@ jobs:
                   if attempt==2:raise RuntimeError('Restart nie został potwierdzony; pozostaje harmonogram awaryjny.') from None
                   time.sleep(3)
           PYCODE
-
-  vinted:
-    if: ${{ inputs.test_discord != true }}
-    permissions:
-      contents: read
-    uses: ./.github/workflows/vinted.yml
-    with:
-      session_minutes: ${{ inputs.session_minutes || 300 }}
-    secrets:
-      DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
-      SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
-      SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
-      RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}

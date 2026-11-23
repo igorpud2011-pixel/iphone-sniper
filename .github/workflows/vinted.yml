@@ -1,22 +1,23 @@
 name: Alerty Vinted
 on:
+  push:
+    branches: [main]
+    paths:
+      - vinted_monitor.py
+      - polling.py
+      - bot.py
+      - requirements.txt
+      - .github/workflows/vinted.yml
+  repository_dispatch:
+    types: [monitor-restart]
   schedule:
     - cron: '2,22,42 * * * *'
   workflow_dispatch:
-  workflow_call:
     inputs:
       session_minutes:
+        description: Czas sesji w minutach
         type: number
-        default: 20
-    secrets:
-      DISCORD_VINTED_WEBHOOK_URL:
-        required: true
-      SETTINGS_URL:
-        required: true
-      SETTINGS_KEY:
-        required: true
-      RESALE_PRICES_JSON:
-        required: false
+        default: 300
 permissions:
   contents: read
 concurrency:
@@ -29,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
           persist-credentials: false
       - uses: actions/cache/restore@v4
         id: state
@@ -37,30 +39,44 @@ jobs:
           key: vinted-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: vinted-state-
       - run: python3 -m pip install -r requirements.txt
-      - name: Skanuj katalog Vinted
-        run: |
-          if ! [[ "$SESSION_MINUTES" =~ ^[0-9]+$ ]] || [ "$SESSION_MINUTES" -lt 1 ] || [ "$SESSION_MINUTES" -gt 300 ]; then SESSION_MINUTES=20; fi
-          scans=$(((SESSION_MINUTES + 1) / 2))
-          result=0
-          for ((scan=1; scan<=scans; scan++)); do
-            started=$SECONDS
-            echo "::group::Skan $scan/$scans"
-            timeout 110s python3 -u vinted_monitor.py && result=0 || result=$?
-            echo "::endgroup::"
-            if git fetch origin main --quiet && ! git diff --quiet HEAD origin/main -- vinted_monitor.py bot.py requirements.txt .github/workflows/vinted.yml .github/workflows/monitor.yml; then
-              echo "Wykryto zmianę kodu. Zapisuję stan."
-              break
-            fi
-            delay=$((120 - (SECONDS - started)))
-            if [ "$scan" -lt "$scans" ] && [ "$delay" -gt 0 ]; then sleep "$delay"; fi
-          done
-          exit "$result"
-        env:
-          SESSION_MINUTES: ${{ inputs.session_minutes || 20 }}
+      - name: Pierwsze trzy odczyty Vinted
+        continue-on-error: true
+        env: &vinted_settings
+          SESSION_MINUTES: ${{ inputs.session_minutes || 300 }}
           DISCORD_VINTED_WEBHOOK_URL: ${{ secrets.DISCORD_VINTED_WEBHOOK_URL }}
           SETTINGS_URL: ${{ secrets.SETTINGS_URL }}
           SETTINGS_KEY: ${{ secrets.SETTINGS_KEY }}
           RESALE_PRICES_JSON: ${{ secrets.RESALE_PRICES_JSON }}
+        run: POLL_TRACE_DIR="$RUNNER_TEMP/odczyty-vinted" python3 -u vinted_monitor.py --window
+      - name: Podsumuj odczyty i potwierdzenia
+        id: receipt
+        if: ${{ !cancelled() }}
+        run: python3 polling.py "$RUNNER_TEMP/odczyty-vinted"
+      - name: Pomiar · ${{ steps.receipt.outputs.sample }}
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: odczyty-vinted-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/odczyty-vinted
+          retention-days: 1
+          if-no-files-found: warn
+      - name: Skanuj katalog Vinted
+        env: *vinted_settings
+        run: |
+          if ! [[ "$SESSION_MINUTES" =~ ^[0-9]+$ ]] || [ "$SESSION_MINUTES" -lt 1 ] || [ "$SESSION_MINUTES" -gt 300 ]; then SESSION_MINUTES=300; fi
+          deadline=$((SECONDS + SESSION_MINUTES * 60))
+          result=0
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            started=$SECONDS
+            python3 -u vinted_monitor.py --window && result=0 || result=$?
+            if git fetch origin main --quiet && ! git diff --quiet HEAD origin/main -- vinted_monitor.py polling.py bot.py requirements.txt .github/workflows/vinted.yml; then
+              echo "Nowa wersja Vinted. Zapisuję historię przed przełączeniem."
+              break
+            fi
+            delay=$((60 - (SECONDS - started)))
+            if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
+          done
+          exit "$result"
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() && hashFiles('.vinted-state.json') != '' }}
         with:

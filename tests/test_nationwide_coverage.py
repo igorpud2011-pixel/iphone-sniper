@@ -30,6 +30,7 @@ class NationwideCoverageTests(unittest.TestCase):
 
     def test_vinted_alerts_for_out_of_order_ids_on_later_pages_and_deduplicates(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(vinted, "STATE", Path(temp) / "state.json"), patch.object(vinted, "fetch_catalog") as fetch, patch.object(vinted, "urlopen") as post, patch.object(vinted.time, "sleep"):
+            post.return_value.__enter__.return_value.read.return_value = b'{"id":"receipt"}'
             vinted.STATE.write_text(json.dumps(["100"]), encoding="utf-8")
             for pages, expected in (([cards(100, 110), cards(100, 90), cards(80)], 1),
                                     ([cards(120, 110), cards(110, 105), cards(90, 80)], 2)):
@@ -44,6 +45,7 @@ class NationwideCoverageTests(unittest.TestCase):
 
     def test_vinted_respects_rate_limit_and_delivers_from_available_page(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(vinted, "STATE", Path(temp) / "state.json"), patch.object(vinted, "fetch_catalog") as fetch, patch.object(vinted, "urlopen") as post, patch.object(vinted.time, "sleep"):
+            post.return_value.__enter__.return_value.read.return_value = b'{"id":"receipt"}'
             vinted.save(["100"])
             fetch.side_effect = [cards(101), HTTPError("https://www.vinted.pl/catalog", 429, "", {}, None)]
             report = dict(fetched=0, matched=0, alerts=0, searches_ok=0, errors=[])

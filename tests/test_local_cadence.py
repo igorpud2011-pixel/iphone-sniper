@@ -1,11 +1,14 @@
 import os
+import tempfile
+from pathlib import Path
 import unittest
-from types import SimpleNamespace
+from threading import Event
+
+import polling
 from unittest.mock import call, patch
 from urllib.parse import parse_qs, urlsplit
 
 import bot
-import run_profiles
 
 
 class LocalCadenceTest(unittest.TestCase):
@@ -23,31 +26,60 @@ class LocalCadenceTest(unittest.TestCase):
         self.assertEqual(query["search[order]"], ["created_at:desc"])
         self.assertEqual(search["source"], "rss")
 
-    def test_local_checks_at_twenty_and_forty_seconds(self):
-        with patch.object(run_profiles.time, "monotonic", side_effect=[100, 105, 122]), \
-             patch.object(run_profiles.time, "sleep") as sleep, \
-             patch.object(run_profiles.subprocess, "run", return_value=SimpleNamespace(returncode=0)) as run:
-            result = run_profiles.run_local("bot.py", {"ALERT_PROFILE": "local"})
-        self.assertEqual(result, 0)
+    def test_both_secondary_ticks_use_absolute_time(self):
+        with patch.object(polling.time, "monotonic", side_effect=[105, 122]), patch.object(polling.time, "sleep") as sleep:
+            self.assertEqual(list(polling.remaining_slots(100)), [20, 40])
         self.assertEqual(sleep.call_args_list, [call(15), call(18)])
-        self.assertEqual(run.call_count, 3)
-        self.assertEqual(run.call_args.kwargs["env"]["OLX_LOCAL_FAST_SCAN"], "1")
 
-    def test_slow_or_failed_full_scan_does_not_add_extra_scan(self):
-        for elapsed, code in ((42, 0), (3, 2)):
-            with self.subTest(elapsed=elapsed, code=code), \
-                 patch.object(run_profiles.time, "monotonic", side_effect=[100, 100 + elapsed, 100 + elapsed]), \
-                 patch.object(run_profiles.time, "sleep") as sleep, \
-                 patch.object(run_profiles.subprocess, "run", return_value=SimpleNamespace(returncode=code)) as run:
-                self.assertEqual(run_profiles.run_local("bot.py", {}), code)
-                run.assert_called_once()
-                sleep.assert_not_called()
+    def test_overdue_ticks_do_not_start_a_burst(self):
+        with patch.object(polling.time, "monotonic", side_effect=[126, 127]), patch.object(polling.time, "sleep") as sleep:
+            self.assertEqual(list(polling.remaining_slots(100)), [40])
+            sleep.assert_called_once_with(13)
 
+    def test_broad_reads_continue_while_deep_source_is_busy(self):
+        for profile in ("local", "polska"):
+            with self.subTest(profile=profile):
+                release_deep, head_read = Event(), Event()
+                initial = {"url": "https://www.olx.pl/telefony/q-iphone/?q=1", "source": "rss"}
+                slow = {"url": "https://www.olx.pl/telefony/q-iphone-13/", "source": "rss"}
+                def fetch(search):
+                    if search is slow:
+                        if not release_deep.wait(3):
+                            raise AssertionError("The full scan blocked the first-page reader")
+                    return []
+                def ticks(started):
+                    if not head_read.wait(3):
+                        raise AssertionError("No initial result")
+                    yield 20
+                    yield 40
+                results = []
+                with patch.dict(os.environ, {"ALERT_PROFILE": profile}), patch.object(bot, "remaining_slots", ticks):
+                    for index, items, error, repeated in bot.source_reads([initial, slow], fetch, True):
+                        self.assertIsNone(error)
+                        results.append((index, repeated))
+                        if index == 0:
+                            head_read.set()
+                        if results.count((0, True)) == 2:
+                            release_deep.set()
+                self.assertEqual(results.count((0, True)), 2)
+                self.assertEqual(results[-1], (1, False))
 
-    def test_partial_quick_scan_leaves_recovery_to_the_full_scan(self):
-        runs = [SimpleNamespace(returncode=0), SimpleNamespace(returncode=2)]
-        with patch.object(run_profiles.time, "monotonic", side_effect=[100, 105]), \
-             patch.object(run_profiles.time, "sleep"), \
-             patch.object(run_profiles.subprocess, "run", side_effect=runs) as run:
-            self.assertEqual(run_profiles.run_local("bot.py", {"ALERT_PROFILE": "local"}), 0)
-            self.assertEqual(run.call_count, 2)
+    def test_head_not_requested_again_during_long_retry_after(self):
+        from requests import HTTPError, Response
+        response = Response()
+        response.status_code = 429
+        response.headers["Retry-After"] = "360"
+        observed = Event()
+        def ticks(started):
+            observed.wait(2)
+            yield 20
+            yield 40
+        with tempfile.TemporaryDirectory() as tmp, patch.object(bot, "STATE_PATH", Path(tmp) / "seen.json"), patch.object(bot, "remaining_slots", ticks):
+            read = {"url": "https://www.olx.pl/telefony/q-iphone/?q=1", "source": "rss"}
+            with patch.object(bot, "fetch_search", side_effect=HTTPError(response=response)) as fetch:
+                for result in bot.source_reads([read], fetch, True):
+                    self.assertIsInstance(result[2], HTTPError)
+                    observed.set()
+                for result in bot.source_reads([read], fetch, True):
+                    self.assertIsInstance(result[2], RuntimeError)
+                self.assertEqual(fetch.call_count, 1)

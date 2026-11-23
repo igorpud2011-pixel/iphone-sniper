@@ -2,11 +2,11 @@
 
 Monitor korzysta z publicznego generatora OLX RSS pod adresem https://tedeelock.com/ zamiast bezpośrednio pobierać strony OLX z GitHub Actions. Generator otrzymuje wyłącznie publiczny link wyszukiwania. Webhook Discorda pozostaje w GitHub Secrets i nie jest przekazywany generatorowi.
 
-To niezależny, zewnętrzny serwis. Nie ma potwierdzonej gwarancji dostępności, kompletności ani świeżości danych. Sprawdzanie co 5 minut nie gwarantuje, że samo źródło odświeża dane w tym rytmie. Pierwszy przebieg ustala historię bez alertów; późniejsze wysyłają nowo wykryte ID. Wyniki mogą obejmować promowane oferty. Dane są ograniczone do ofert udostępnionych przez kanał.
+Generator RSS ma własny rytm aktualizacji. Pierwszy przebieg zapisuje dotychczasowe oferty. Kolejne wysyłają nowo wykryte ogłoszenia pasujące do filtrów.
 
 ## Szybkość i ograniczenia źródła
 
-GitHub Actions uruchamia monitoring co 5 minut — to najkrótszy obsługiwany interwał harmonogramu, a start może się opóźnić. W trybie ciągłym na stale działającym komputerze/VPS bot sprawdza co 90 sekund (`python bot.py --loop`). Oba tryby korzystają z publicznego kanału RSS, więc jego opóźnienie może być większe niż interwał sprawdzania. Sprawdzenia wyszukiwań odbywają się równolegle, aby skrócić pojedynczy przebieg.
+W aktywnej sesji oba profile OLX i Vinted planują odczyt pierwszej strony co 20 sekund. OLX osobno sprawdza Bielsko-Białą i całą Polskę. Vinted czyta równolegle ogólne wyniki i kategorię telefonów Apple. Głębsze strony mają osobne odczyty. W zakładce Actions pliki `odczyty-olx` i `odczyty-vinted` zawierają czasy odczytów oraz potwierdzonych wysyłek z początku sesji. Czas od wykrycia liczony jest od odczytu źródła.
 
 Nieaktywne oferty spoza publicznych wyników nie są dostępne w tym RSS. MoneyAlert opisuje, że korzysta z danych spoza wyników wyszukiwania, ale nie publikuje sposobu ich pozyskiwania; nie da się tego odtworzyć z publicznego kanału. Bot nie próbuje odczytywać niepublicznych danych ani omijać zabezpieczeń OLX.
 
@@ -40,7 +40,7 @@ Bot sprawdza zapisane wyszukiwania OLX i wysyła nowe pasujące ogłoszenia na D
 3. Otwórz zakładkę Actions i włącz workflow, jeśli GitHub o to poprosi. Uruchom `iPhone Sniper OLX` ręcznie, by sprawdzić konfigurację.
 4. Pierwszy poprawny przebieg zapisze obecne oferty bez alertów; następne powinny wysyłać nowe pasujące ogłoszenia.
 
-GitHub Actions uruchamia skan co 5 minut, z przesunięciem na 2., 7., 12. minutę itd., żeby unikać szczytu obciążenia na początku każdej godziny. GitHub może opóźnić uruchomienie, więc nie da się zagwarantować sztywnego limitu 5 minut. Przy prywatnym repozytorium sprawdź limit minut GitHub Actions na swoim koncie. Szczegóły opisuje [dokumentacja harmonogramów GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule).
+Harmonogram uruchamia sesje awaryjne. W trakcie sesji za kolejne odczyty odpowiada działający proces. GitHub może opóźnić start nowej sesji. [Dokumentacja harmonogramów GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
 ### Opcjonalnie: Telegram zamiast Discorda albo równolegle
 
@@ -87,13 +87,13 @@ python bot.py --loop
 
 To alternatywa dla bieżącego trybu GitHub Actions. Domyślnie tryb ciągły sprawdza RSS co 60 sekund; tę wartość ustawia `poll_interval_seconds`. Dockerfile uruchamia ten tryb automatycznie. `docker-compose.yml` zachowuje pamięć ogłoszeń i uruchamia bota ponownie po restarcie maszyny. Skopiuj `.env.example` do `.env`, wpisz webhook Discorda w `DISCORD_WEBHOOK_URL`, a opcjonalnie ustaw `SETTINGS_URL` i `SETTINGS_KEY`. Uruchom `docker compose up -d --build`; logi podejrzysz przez `docker compose logs -f`. Nie wysyłaj ani nie commituj pliku `.env`. Po uruchomieniu i potwierdzeniu alertu wyłącz harmonogram GitHub Actions, aby nie działały dwa niezależne skanery i nie wysyłały duplikatów. Baza miejscowości pochodzi z [GeoNames](https://www.geonames.org/) i jest udostępniana na licencji CC BY 4.0.
 
-W bieżącym trybie GitHub Actions aktywna sesja rozpoczyna skan co około 60 sekund; w trybie ciągłym około 0–60 sekund plus pobranie danych i wysłanie alertu. Żaden z nich nie przyspieszy publikacji po stronie OLX ani odświeżenia zewnętrznego RSS. Monitor nie widzi ofert, których publiczne wyniki i RSS jeszcze nie udostępniają.
+Odstęp od wystawienia do wiadomości zależy także od chwili udostępnienia oferty w publicznym katalogu lub RSS oraz przyjęcia wiadomości przez Discord.
 
 ## Ważne ograniczenia
 
 - To monitor publicznych stron wyników OLX, a nie oficjalna integracja OLX. Oficjalne API OLX opisuje integracje do zarządzania / publikowania własnych ogłoszeń, nie publiczne wyszukiwanie całego rynku.
 - OLX może zmieniać układ strony, ograniczać częstotliwość zapytań albo zwrócić błąd 403/429. Bot nie obchodzi zabezpieczeń; zapisuje błąd i próbuje przy następnym przebiegu.
-- Nie gwarantuje alertu w sekundę po publikacji. W aktywnej sesji GitHub Actions skan rozpoczyna się co około 60 sekund, a harmonogram co 5 minut służy jako awaryjny start. Przerwa przy wymianie sesji zależy od dostępności runnera.
+- W trakcie zmiany sesji może powstać przerwa zależna od dostępności runnera.
 - Bot tylko wysyła linki. Nie loguje się na OLX, nie pisze do sprzedawców i niczego nie kupuje.
 
 ## Dwa dostawcy RSS OLX

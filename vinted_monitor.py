@@ -1,11 +1,15 @@
 """Read a public Vinted search and post new iPhone listings to Discord."""
+import argparse
 import json
 import os
 from pathlib import Path
 import re
 import time
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
 from html.parser import HTMLParser
+from threading import Event
 from urllib.error import HTTPError
 from urllib.parse import unquote, urlencode, urlsplit
 from urllib.request import Request, urlopen
@@ -13,6 +17,7 @@ from urllib.request import Request, urlopen
 import requests
 
 from bot import Listing, detect_model, phone_model, resale_estimate
+from polling import remaining_slots, retry_delay, stream_workers, trace
 
 ORIGIN = "https://www.vinted.pl"
 STATE = Path(".vinted-state.json")
@@ -50,11 +55,11 @@ def is_accessory(title):
     return bool(ACCESSORY_ONLY.search(title) or ACCESSORY.search(subject) or PART.search(subject))
 
 
-def is_phone_title(title, url="", category=""):
+def is_phone_title(title, url="", category="", model_title=None):
     slug = LINK.fullmatch(urlsplit(url).path)
     slug_title = unquote(slug[2]) if slug and slug[2] else ""
     return bool(
-        detect_model(title)
+        detect_model(model_title or title)
         and not is_accessory(title)
         and (not is_accessory(slug_title) or normalize_title(title.replace("+", " ")) == normalize_title(slug_title))
         and not ACCESSORY_CATEGORY.search(normalize_title(category))
@@ -83,17 +88,17 @@ class Catalog(HTMLParser):
             self.cards[match[1]] = (ORIGIN + path, title)
 
 
-def save(seen, legacy_cutoff=None):
+def save(seen, legacy_cutoff=None, **metadata):
     temporary = STATE.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"seen": seen[-8000:], "legacy_cutoff": legacy_cutoff}), encoding="utf-8")
+    temporary.write_text(json.dumps({"seen": seen[-8000:], "legacy_cutoff": legacy_cutoff, **metadata}), encoding="utf-8")
     temporary.replace(STATE)
 
 
 PRICE = re.compile(r"(?<![\d.,])(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*zł", re.I)
-META = re.compile(r", (?:Marka|Model|Stan|Rozmiar|Kolor|Kategoria): ")
-CONDITION = re.compile(r", Stan: ([^,]+)")
+META = re.compile(r",\s*(?:Marka|Model|Stan|Rozmiar|Kolor|Kategoria):\s*", re.I)
+CONDITION = re.compile(r",\s*Stan:\s*([^,]+)", re.I)
 CATEGORY = re.compile(r", Kategoria: ([^,]+)", re.I)
-MODEL = re.compile(r", Model: ([^,]+)")
+MODEL = re.compile(r",\s*Model:\s*([^,]+)", re.I)
 
 
 def item_details(details):
@@ -116,7 +121,7 @@ def alert_payload(item_id, details, url, settings):
     title, model_title, amount, condition = item_details(details)
     model = detect_model(model_title)
     category = CATEGORY.search(details)
-    if not model or model not in settings["models"] or not is_phone_title(title, url, category[1] if category else ""):
+    if not model or model not in settings["models"] or not is_phone_title(title, url, category[1] if category else "", model_title):
         return None
     minimum, maximum = settings["min"], settings["max"]
     if amount is None and (minimum or maximum is not None):
@@ -163,9 +168,14 @@ def settings_request(path, data=None):
 CATALOG_PAGES = 3
 
 
-def fetch_catalog(page_number):
-    query = urlencode({"search_text": "iPhone", "order": "newest_first", "page": page_number})
-    request = Request(ORIGIN + "/catalog?" + query, headers={
+def fetch_catalog(page_number, phones=False):
+    if phones:
+        path = "/catalog/3661-mobile-phones/brand/54661-apple"
+        query = {"order": "newest_first", "page": page_number}
+    else:
+        path = "/catalog"
+        query = {"search_text": "iPhone", "order": "newest_first", "page": page_number}
+    request = Request(ORIGIN + path + "?" + urlencode(query), headers={
         "User-Agent": "iPhoneSniper/1.0 (public listing alerts)",
         "Accept": "text/html",
     })
@@ -176,111 +186,251 @@ def fetch_catalog(page_number):
     return catalog.cards
 
 
+class DiscordLimited(RuntimeError):
+    def __init__(self, wait):
+        super().__init__("Discord ograniczył wysyłkę.")
+        self.wait = wait
+
+
 def send_listing(hook, payload):
     request = Request(hook + "?wait=true", json.dumps(payload).encode(),
                       {"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/igorpud2011-pixel/iphone-sniper, 1.0)"}, method="POST")
-    for attempt in range(2):
-        try:
-            with urlopen(request, timeout=15) as response:
-                response.read()
-            return
-        except HTTPError as error:
-            if error.code != 429 or attempt:
-                raise SystemExit(f"Wysyłka na Discord: HTTP {error.code}.") from None
+    try:
+        with urlopen(request, timeout=12) as response:
+            receipt = json.load(response)
+            if not isinstance(receipt, dict) or not receipt.get("id"):
+                raise RuntimeError("Discord nie zwrócił potwierdzenia wiadomości.")
+    except HTTPError as error:
+        if error.code == 429:
+            wait = retry_delay(error.headers.get("Retry-After"), 2)
             try:
-                delay = float(error.headers.get("Retry-After", "2"))
-            except ValueError:
-                delay = 2
-            if not 0 <= delay <= 15:
-                raise SystemExit("Discord ograniczył wysyłkę. Kolejny skan ponowi próbę.") from None
-            time.sleep(delay + 0.5)
+                wait = max(wait, float(json.load(error).get("retry_after", 0)))
+            except (ValueError, TypeError, OSError, AttributeError):
+                pass
+            raise DiscordLimited(wait) from None
+        raise RuntimeError(f"Wysyłka na Discord: HTTP {error.code}.") from None
 
 
-def scan(hook, settings, report):
-    bootstrap = not STATE.exists()
-    previous = [] if bootstrap else json.loads(STATE.read_text(encoding="utf-8"))
-    seen = previous if isinstance(previous, list) else previous["seen"]
-    legacy_cutoff = (max(map(int, seen), default=0) if isinstance(previous, list) and not bootstrap
-                     else previous.get("legacy_cutoff") if isinstance(previous, dict) else None)
-    known = set(seen)
-    fetched = set()
-    report["searches_total"] = CATALOG_PAGES
-    fresh = 0
-    for number in range(1, CATALOG_PAGES + 1):
-        try:
-            batch = fetch_catalog(number)
-        except HTTPError as error:
-            report["errors"].append(f"Katalog Vinted, strona {number}: HTTP {error.code}.")
-            if error.code in (403, 429):
-                break
-            continue
-        except (OSError, TimeoutError) as error:
-            report["errors"].append(f"Katalog Vinted, strona {number}: {type(error).__name__}.")
-            continue
-        if not batch:
-            report["errors"].append(f"Katalog Vinted: brak rozpoznanych kart na stronie {number}.")
-            break
-        report["searches_ok"] += 1
-        if batch.keys() <= fetched:
-            break
-        fetched.update(batch)
-        report["fetched"] = len(fetched)
-        for item_id in sorted(batch, key=int, reverse=True):
-            if item_id in known:
-                continue
-            if not bootstrap and (legacy_cutoff is None or int(item_id) > legacy_cutoff):
-                fresh += 1
-                url, details = batch[item_id]
-                payload = alert_payload(item_id, details, url, settings)
-                if payload:
-                    report["matched"] += 1
-                    send_listing(hook, payload)
-                    report["alerts"] += 1
-                    seen.append(item_id)
-                    known.add(item_id)
-                    save(seen, legacy_cutoff)
-                    time.sleep(0.7)
-                    continue
-            seen.append(item_id)
-            known.add(item_id)
-        if not bootstrap:
-            save(seen, legacy_cutoff)
-    if not fetched:
-        raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
-    if bootstrap:
-        request = Request(hook, headers={"Accept": "application/json"})
-        try:
-            with urlopen(request, timeout=15) as response:
-                if not json.load(response).get("channel_id"):
-                    raise RuntimeError("Discord nie potwierdził kanału webhooka.")
-        except HTTPError as error:
-            raise SystemExit(f"Sprawdzenie webhooka Discord: HTTP {error.code}.") from None
-    save(seen, legacy_cutoff if report["errors"] else None)
-    print(f"Karty: {len(fetched)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {report['alerts']}.")
-
-
-if __name__ == "__main__":
-    hook = os.environ.get("DISCORD_VINTED_WEBHOOK_URL", "").strip()
-    if not HOOK.fullmatch(hook):
-        raise SystemExit("Ustaw sekret DISCORD_VINTED_WEBHOOK_URL z webhookiem kanału Vinted.")
+def catalogue_window(read, pages, phones):
+    """Keep each front page on its own clock while recovery pages are being read."""
+    first_page = Event()
+    limited = Event()
     started = time.monotonic()
-    report = dict(status="error", searches_total=1, searches_ok=0, fetched=0, matched=0, alerts=0, errors=[])
+
+    def fetch(page, focused, emit):
+        if limited.is_set():
+            return
+        result = read(page, focused)
+        error = result[1]
+        if isinstance(error, HTTPError) and error.code in (403, 429):
+            limited.set()
+        emit((page, focused, result))
+
+    def watch_head(focused, emit):
+        try:
+            fetch(1, focused, emit)
+        finally:
+            if not focused:
+                first_page.set()
+        for _ in remaining_slots(started):
+            fetch(1, focused, emit)
+
+    def recover_pages(emit):
+        first_page.wait()
+        for page in range(2, pages + 1):
+            fetch(page, False, emit)
+
+    tasks = [partial(watch_head, False)]
+    if phones:
+        tasks.append(partial(watch_head, True))
+    if pages > 1:
+        tasks.append(recover_pages)
+    yield from stream_workers(tasks, len(tasks))
+
+
+def scan(hook, settings, report, *, front_only=False, phones=False, window=False):
+    if not STATE.exists():
+        request = Request(hook, headers={"Accept": "application/json"})
+        with urlopen(request, timeout=12) as response:
+            if not json.load(response).get("channel_id"):
+                raise RuntimeError("Discord nie potwierdził kanału webhooka.")
+    previous = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    if isinstance(previous, list):
+        previous = {"seen": previous, "legacy_cutoff": max(map(int, previous), default=0)}
+    seen = previous.get("seen", [])
+    legacy_cutoff = previous.get("legacy_cutoff")
+    known = set(seen)
+    metadata = {key: previous[key] for key in ("phones_baseline", "retry_until", "baseline_pages", "discord_until", "pending") if key in previous}
+    blocked = metadata.get("retry_until", 0) > time.time()
+    # Older state files already have a broad-catalogue baseline on all pages.
+    baseline_pages = set(metadata.get("baseline_pages", [] if "seen" in previous else range(1, CATALOG_PAGES + 1)))
+    if baseline_pages:
+        front_only = False
+    fetched = set()
+    processed = set()
+    checked = 0
+    fresh = 0
+    pending = metadata.setdefault("pending", {})
+    pages = 1 if front_only else CATALOG_PAGES
+    report["searches_total"] = pages - 1 + (1 + int(phones)) * (3 if window else 1)
+
+    def checkpoint():
+        save(seen, legacy_cutoff, baseline_pages=sorted(baseline_pages),
+             **{key: value for key, value in metadata.items() if key != "baseline_pages"})
+
+    def read(page, focused=False):
+        started = time.time()
+        try:
+            cards = fetch_catalog(page, phones=True) if focused else fetch_catalog(page)
+            if not cards:
+                raise ValueError("brak rozpoznanych kart")
+        except (HTTPError, OSError, TimeoutError, ValueError) as error:
+            return {}, error, time.time()
+        observed = time.time()
+        if page == 1:
+            trace("vinted", "phones_read" if focused else "front_read", started=round(started, 3), cards=len(cards))
+        return cards, None, observed
+
+    def deliver(item_id, url, details, observed):
+        payload = alert_payload(item_id, details, url, settings)
+        if not payload:
+            if pending.pop(item_id, None) is not None:
+                checkpoint()
+            return
+        report["matched"] += 1
+        if metadata.get("discord_until", 0) <= time.time():
+            try:
+                send_listing(hook, payload)
+            except DiscordLimited as error:
+                metadata["discord_until"] = time.time() + max(1, error.wait)
+                report["errors"].append("Discord ograniczył wysyłkę. Zachowuję kolejkę.")
+            except (OSError, ValueError, RuntimeError) as error:
+                metadata["discord_until"] = time.time() + 10
+                report["errors"].append(f"Wysyłka Vinted: {type(error).__name__}.")
+            else:
+                report["alerts"] += 1
+                trace("vinted", "accepted", since_detection=round(max(0, time.time() - observed), 2))
+                seen.append(item_id)
+                known.add(item_id)
+                pending.pop(item_id, None)
+                checkpoint()
+                return
+        if item_id not in pending:
+            pending[item_id] = [url, details, observed]
+            checkpoint()
+
+    # Confirmed receipts survive restarts. A Discord limit does not discard
+    # other newly seen listings, and a pending item can outlive a catalogue page.
+    retry_started = time.monotonic()
+    for item_id, (url, details, observed) in list(pending.items()):
+        if metadata.get("discord_until", 0) > time.time() or time.monotonic() - retry_started >= 3:
+            break
+        deliver(item_id, url, details, observed)
+    if blocked:
+        report["errors"].append("Vinted: przerwa po ograniczeniu dostępu.")
+        return
+    metadata.pop("retry_until", None)
+
+    def consume(page, focused, result):
+        nonlocal checked, fresh, blocked
+        cards, error, observed = result
+        if error:
+            status = error.code if isinstance(error, HTTPError) else None
+            reason = f"HTTP {status}" if status else type(error).__name__
+            report["errors"].append(f"Vinted {'telefony Apple' if focused else 'katalog'}, strona {page}: {reason}.")
+            if status in (403, 429):
+                blocked = True
+                pause = retry_delay(error.headers.get("Retry-After"), 300 if status == 403 else 60)
+                metadata["retry_until"] = max(metadata.get("retry_until", 0), time.time() + pause)
+                checkpoint()
+            return
+        checked += 1
+        report["searches_ok"] += 1
+        fetched.update(cards)
+        report["fetched"] = len(fetched)
+        # Introducing the faster category must not send its pre-existing inventory.
+        # Its initial IDs stay eligible if the original broad search reports them.
+        initial_category = focused and "phones_baseline" not in metadata
+        if initial_category:
+            metadata["phones_baseline"] = list(cards)
+        category_baseline = set(metadata.get("phones_baseline", [])) if focused else set()
+        initial_page = not focused and page in baseline_pages
+        for item_id in sorted(cards, key=int, reverse=True):
+            if item_id in known or item_id in category_baseline or item_id in pending:
+                continue
+            if initial_page or (legacy_cutoff is not None and int(item_id) <= legacy_cutoff):
+                seen.append(item_id)
+                known.add(item_id)
+                continue
+            url, details = cards[item_id]
+            if (item_id, details) in processed:
+                continue
+            processed.add((item_id, details))
+            fresh += 1
+            deliver(item_id, url, details, observed)
+        if initial_page:
+            baseline_pages.remove(page)
+        checkpoint()
+
+    if window:
+        for page, focused, result in catalogue_window(read, pages, phones):
+            consume(page, focused, result)
+    elif phones:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            heads = {pool.submit(read, 1, focused): focused for focused in (False, True)}
+            for future in as_completed(heads):
+                consume(1, heads[future], future.result())
+    else:
+        consume(1, False, read(1))
+
+    if not window and not front_only:
+        for page in range(2, CATALOG_PAGES + 1):
+            if blocked:
+                break
+            result = read(page)
+            consume(page, False, result)
+    if not checked:
+        raise RuntimeError("Vinted nie zwrócił kart wyników. Sprawdź dostęp do katalogu.")
+    if pending and not report["errors"]:
+        report["errors"].append("Wiadomości oczekują na ponowienie wysyłki do Discorda.")
+    if not front_only and not report["errors"]:
+        legacy_cutoff = None
+    checkpoint()
+    print(f"Karty: {len(fetched)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {report['alerts']}.", flush=True)
+
+
+def run_scan(hook, window):
+    started = time.monotonic()
+    report = dict(status="error", searches_total=0, searches_ok=0, fetched=0, matched=0, alerts=0, errors=[])
     try:
         settings = settings_request("settings")
         if settings["enabled"]:
-            scan(hook, settings, report)
+            scan(hook, settings, report, phones=True, window=window)
             report["status"] = "partial" if report["errors"] else "ok"
         else:
             report["status"] = "paused"
-            print("Alerty Vinted wstrzymane w ustawieniach.")
     except (Exception, SystemExit) as error:
         message = str(error) if isinstance(error, (SystemExit, RuntimeError)) else type(error).__name__
         report["errors"].append(message)
-        print(f"Skan Vinted nieudany: {message}")
-        raise SystemExit(1) from None
+        print(f"Skan Vinted nieudany: {message}", flush=True)
     finally:
         report.update(finished_at=int(time.time()), duration_seconds=round(time.monotonic()-started, 2))
         try:
             settings_request("health", report)
         except Exception:
-            print("Nie udało się przesłać statusu Vinted do panelu.")
+            print("Nie udało się przesłać statusu Vinted do panelu.", flush=True)
+    return int(bool(report["errors"]))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--window", action="store_true", help="Sprawdzaj pierwsze strony co 20 s przez minutę.")
+    options = parser.parse_args()
+    hook = os.environ.get("DISCORD_VINTED_WEBHOOK_URL", "").strip()
+    if not HOOK.fullmatch(hook):
+        raise SystemExit("Ustaw sekret DISCORD_VINTED_WEBHOOK_URL z webhookiem kanału Vinted.")
+    return run_scan(hook, options.window)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
