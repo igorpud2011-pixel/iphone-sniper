@@ -57,6 +57,10 @@ class Listing:
     seller_type: str = "unknown"
 
 
+def is_fast_local_scan() -> bool:
+    return os.getenv("ALERT_PROFILE") == "local" and os.getenv("OLX_LOCAL_FAST_SCAN") == "1"
+
+
 def load_config() -> dict[str, Any]:
     with CONFIG_PATH.open("r", encoding="utf-8") as f:
         config = json.load(f)
@@ -142,6 +146,14 @@ def load_config() -> dict[str, Any]:
     # One broad independent feed supplements the existing family feeds.
     # Keep a single request per scan: RSS-Bridge may crawl detail pages on cache miss.
     primary = [search for search in searches if search.get("source") == "rss"]
+    if primary and is_fast_local_scan():
+        broad = next((search for search in primary if "/q-iphone/?" in search["url"]), None)
+        if broad is None:
+            broad = {**primary[0], "name": f'iPhone · {config["area_city"]} +{config["area_radius"]} km'}
+            broad["url"] = re.sub(r"/q-iphone-[^/]+/", "/q-iphone/", broad["url"])
+        config["searches"] = [broad]
+        config["request_timeout_seconds"] = min(10, int(config.get("request_timeout_seconds", 20)))
+        return config
     if primary and config.get("supplementary_rss_bridge", True):
         broad = next((search for search in primary if "/q-iphone/?" in search["url"]), None)
         if broad is None:
@@ -943,7 +955,8 @@ def run_once() -> int:
         code = 2
     report["finished_at"] = int(time.time())
     report["duration_seconds"] = round(time.monotonic()-started, 1)
-    publish_status(report)
+    if not is_fast_local_scan():
+        publish_status(report)
     return code
 
 
