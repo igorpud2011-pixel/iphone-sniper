@@ -670,6 +670,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     embed = {"title":title, "url":listing.url, "description":"\n".join(body)[:4096],
              "color":0x2ECC71, "timestamp":datetime.now(ZoneInfo("UTC")).isoformat(),
              "footer":{"text":"TEST — to nie jest oferta" if testing else "iPhone Sniper • Zysk bez napraw, prowizji i transportu • Opóźnienie publikacji w RSS nieznane"}}
+    embed["author"] = {"name": "Łowca • OLX", "icon_url": "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f50e.png"}
     if listing.image_url:
         embed["image"] = {"url":listing.image_url}
     headers = {}
@@ -677,7 +678,7 @@ def send_discord(webhook_url: str, listing: Listing, timeout: int) -> None:
     destination = urlsplit(webhook_url)
     if destination.path == "/relay/polska" and destination.scheme == "https" and destination.netloc == settings_origin.netloc:
         headers["Authorization"] = "Bearer " + os.getenv("SETTINGS_KEY", "")
-    response = requests.post(webhook_url, headers=headers, params={"with_components":"true"}, json={"content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
+    response = requests.post(webhook_url, headers=headers, params={"with_components":"true"}, json={"username":"Łowca • OLX", "avatar_url":"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f50e.png", "content":"", "embeds":[embed], "components":offer_components(listing), "allowed_mentions":{"parse":[]}}, timeout=timeout)
     response.raise_for_status()
 
 
