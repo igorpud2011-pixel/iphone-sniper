@@ -1,0 +1,48 @@
+name: Sprawdź czas publikacji OLX
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publication-check.yml]
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Sprawdź publiczną listę ofert bez logowania
+        run: |
+          python3 - <<'PY'
+          import datetime as dt
+          import json
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          query = urlencode({"query": "iphone", "sort_by": "created_at:desc", "limit": 10, "private_business": "private"})
+          url = "https://www.olx.pl/api/v1/offers/?" + query
+          request = Request(url, headers={"Accept": "application/json", "User-Agent": "iPhoneSniper/1.0 (public listing alerts)"})
+          try:
+              with urlopen(request, timeout=10) as response:
+                  rows = json.load(response)["data"]
+          except HTTPError as error:
+              raise SystemExit(f"OLX HTTP {error.code}. Zakończono po jednej próbie.") from None
+          except (URLError, TimeoutError, ValueError, KeyError) as error:
+              raise SystemExit(f"Brak prawidłowych publicznych danych: {type(error).__name__}.") from None
+          ages = []
+          now = dt.datetime.now(dt.timezone.utc)
+          for row in rows:
+              if row.get("status") != "active" or row.get("business") is not False:
+                  continue
+              try:
+                  created = dt.datetime.fromisoformat(row["created_time"])
+                  age = (now - created).total_seconds()
+              except (TypeError, KeyError, ValueError):
+                  continue
+              if age >= 0:
+                  ages.append(round(age))
+          print(f"Publiczne wyniki: {len(rows)}; prywatne aktywne z datą utworzenia: {len(ages)}")
+          if not ages:
+              raise SystemExit("Brak potwierdzonej daty utworzenia aktywnej oferty prywatnej.")
+          print(f"Najświeższy odczytany wpis: {min(ages)} s od utworzenia według OLX.")
+          PY
