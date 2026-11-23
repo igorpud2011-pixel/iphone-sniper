@@ -7,7 +7,7 @@ import time
 import unicodedata
 from html.parser import HTMLParser
 from urllib.error import HTTPError
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import unquote, urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 import requests
@@ -17,11 +17,13 @@ from bot import Listing, detect_model, phone_model, resale_estimate
 ORIGIN = "https://www.vinted.pl"
 STATE = Path(".vinted-state.json")
 ACCESSORY = re.compile(
-    r"\b(?:etui|case|backcase|bumper|cover|husa|hulle|protector\w*|pokrow\w*|foli\w*|"
-    r"szkl\w*|obudow\w*|korpus\w*|ladowar\w*|kab(?:el|l\w*)|przewod\w*|uchwyt\w*|"
-    r"adapter\w*|portfel\w*|smycz\w*|powerbank\w*|sluchawk\w*|airpods|airtag|pop(?:socket|grip)\w*|stojak\w*|wyswietlacz\w*|ekran\w*|digitizer|"
+    r"\b(?:etui\w*|eutui\w*|etiu\w*|etu[ij]?|(?:back|flip|phone|silicone|magsafe)?cases?|"
+    r"bumper\w*|cover\w*|coques?|housses?|fundas?|husa|hull[ae]|hoesjes?|skal|protector\w*|"
+    r"pokrow\w*|foli\w*|szkl\w*|obudow\w*|korpus\w*|ladowar\w*|kab(?:el|l\w*)|"
+    r"przewod\w*|uchwyt\w*|adapter\w*|portfel\w*|smycz\w*|powerbank\w*|sluchawk\w*|"
+    r"airpods|airtag|pop(?:socket|grip)\w*|stojak\w*|wyswietlacz\w*|ekran\w*|digitizer|"
     r"lcd|oled|akumulator\w*|czesci|plyt[ay] glown\w*|tasm[ay]|pudelk\w*|klapk\w*|dummy|"
-    r"atrap\w*)\b"
+    r"atrap\w*|samo szklo|nakladk\w*|pancerz\w*|futeraly?|screen protector)\b"
 )
 PART = re.compile(
     r"^(?:(?:now\w*|oryginaln\w*|uzywan\w*|zamiennik)\s+)*"
@@ -29,21 +31,37 @@ PART = re.compile(
     r"\b(?:bateri\w*|aparat|kamera|glosnik|szybk\w*)\s*(?:$|oryginaln\w*\b|zamiennik\b|now[ay]\b)"
 )
 BUNDLE = re.compile(
-    r"(?:\s+(?:z|w zestawie z|plus)\s+|\s*\+\s*)"
-    r"(?=etui\b|pokrow\w*\b|ladowar\w*\b|pudelk\w*\b)"
+    r"(?:\s+(?:z|w zestawie z|plus|gratis)\s+|\s*\+\s*)"
+    r"(?=(?:etui\w*|cases?|cover|coque|pokrow\w*|ladowar\w*|pudelk\w*)\b)"
 )
+ACCESSORY_ONLY = re.compile(r"\b(?:bez telefonu|bez iphona|telefonu brak|telefon nie jest|telefon nie wchodzi|tylko etui|samo etui|same etui|only case|case only|phone not included|bez smartfona)\b")
+ACCESSORY_CATEGORY = re.compile(r"\b(?:akcesoria|accessories|cases|etui|pokrowce|czesci|spare parts|ochrona ekranu)\b")
 
 
-def is_phone_title(title):
-    if not detect_model(title):
-        return False
+def normalize_title(title):
     folded = unicodedata.normalize("NFD", title.lower().replace("ł", "l"))
     folded = "".join(char for char in folded if not unicodedata.combining(char))
-    subject = BUNDLE.split(re.sub(r"[^a-z0-9%+]+", " ", folded).strip(), maxsplit=1)[0]
-    return not (ACCESSORY.search(subject) or PART.search(subject))
+    return re.sub(r"[^a-z0-9%+]+", " ", folded).strip()
 
 
-LINK = re.compile(r"/items/(\d+)(?:-[^/?#]+)?/?")
+def is_accessory(title):
+    title = normalize_title(title)
+    subject = BUNDLE.split(title, maxsplit=1)[0]
+    return bool(ACCESSORY_ONLY.search(title) or ACCESSORY.search(subject) or PART.search(subject))
+
+
+def is_phone_title(title, url="", category=""):
+    slug = LINK.fullmatch(urlsplit(url).path)
+    slug_title = unquote(slug[2]) if slug and slug[2] else ""
+    return bool(
+        detect_model(title)
+        and not is_accessory(title)
+        and (not is_accessory(slug_title) or normalize_title(title.replace("+", " ")) == normalize_title(slug_title))
+        and not ACCESSORY_CATEGORY.search(normalize_title(category))
+    )
+
+
+LINK = re.compile(r"/items/(\d+)(?:-([^/?#]+))?/?")
 HOOK = re.compile(r"https://discord\.com/api/webhooks/\d{15,22}/[A-Za-z0-9_-]+")
 
 
@@ -72,8 +90,9 @@ def save(seen):
 
 
 PRICE = re.compile(r"(?<![\d.,])(\d[\d \u00a0\u202f]*(?:[,.]\d{1,2})?)\s*zł", re.I)
-META = re.compile(r", (?:Marka|Model|Stan|Rozmiar|Kolor): ")
+META = re.compile(r", (?:Marka|Model|Stan|Rozmiar|Kolor|Kategoria): ")
 CONDITION = re.compile(r", Stan: ([^,]+)")
+CATEGORY = re.compile(r", Kategoria: ([^,]+)", re.I)
 MODEL = re.compile(r", Model: ([^,]+)")
 
 
@@ -96,7 +115,8 @@ def item_details(details):
 def alert_payload(item_id, details, url, settings):
     title, model_title, amount, condition = item_details(details)
     model = detect_model(model_title)
-    if not model or model not in settings["models"] or not is_phone_title(title):
+    category = CATEGORY.search(details)
+    if not model or model not in settings["models"] or not is_phone_title(title, url, category[1] if category else ""):
         return None
     minimum, maximum = settings["min"], settings["max"]
     if amount is None and (minimum or maximum is not None):
@@ -234,3 +254,4 @@ if __name__ == "__main__":
             settings_request("health", report)
         except Exception:
             print("Nie udało się przesłać statusu Vinted do panelu.")
+
