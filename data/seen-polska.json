@@ -1,20 +1,6 @@
 {
   "initialized": true,
   "seen_ids": [
-    "ID1DMND3",
-    "ID1DMNCX",
-    "ID1CR6PV",
-    "ID19UAPG",
-    "ID1DMNBI",
-    "ID1DMMHR",
-    "ID1DMN91",
-    "ID1DMN0F",
-    "ID1CPRCE",
-    "ID1DMMSD",
-    "ID1DMMRS",
-    "ID1BZ0Y8",
-    "ID1CSI0A",
-    "ID1BZ2HZ",
     "ID1DMNKH",
     "ID1DMNDP",
     "ID1DMNUK",
@@ -12000,7 +11986,21 @@
     "ID1DMMIA",
     "ID1DMVCV",
     "ID18PUBN",
-    "ID1DQQFL"
+    "ID1DQQFL",
+    "ID1DMG7L",
+    "IDV4K8S",
+    "ID1DQRNQ",
+    "IDQWDLG",
+    "ID1DQRIY",
+    "ID10SE5K",
+    "ID16RU9L",
+    "ID1DGPHV",
+    "ID10QIEP",
+    "ID15AGCM",
+    "ID1DQR8K",
+    "IDURKWN",
+    "ID1DQR1F",
+    "ID1DQQKO"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0&page=2&search%5Bprivate_business%5D=private",
@@ -16972,15 +16972,12 @@
     "ID1DQREF",
     "ID1DQREA",
     "ID1BKDUY",
-    "ID1CX5OW"
+    "ID1CX5OW",
+    "ID1DQRNQ",
+    "ID1DQR8K",
+    "ID1DQR1F"
   ],
   "rejected_ids": [
-    "ID1BBYHL",
-    "ID1BBYO1",
-    "ID1BBYOE",
-    "ID1BBYPQ",
-    "ID1BBYSJ",
-    "ID1BBYWU",
     "ID1BBYZG",
     "ID1BBZKZ",
     "ID1BC0FU",
@@ -20681,6 +20678,7 @@
     "ID1DGOKM",
     "ID1DGON5",
     "ID1DGOTV",
+    "ID1DGPHV",
     "ID1DGPMC",
     "ID1DGPQA",
     "ID1DGPXI",
@@ -27738,6 +27736,7 @@
     "ID1DQQFL",
     "ID1DQQGN",
     "ID1DQQIB",
+    "ID1DQQKO",
     "ID1DQQLK",
     "ID1DQQPP",
     "ID1DQQUB",
@@ -27748,6 +27747,7 @@
     "ID1DQR28",
     "ID1DQR6W",
     "ID1DQRD6",
+    "ID1DQRIY",
     "ID4CZUL",
     "ID80DZB",
     "ID987BT",
@@ -28069,6 +28069,7 @@
     "IDQSSGV",
     "IDQTI66",
     "IDQWBBK",
+    "IDQWDLG",
     "IDQX0NR",
     "IDQZPOG",
     "IDQZTS0",
@@ -28337,6 +28338,7 @@
     "IDUR3E8",
     "IDUR5Y6",
     "IDURIBA",
+    "IDURKWN",
     "IDURT9F",
     "IDURU3V",
     "IDURVPC",
@@ -28377,6 +28379,7 @@
     "IDV38IC",
     "IDV394M",
     "IDV3ZRP",
+    "IDV4K8S",
     "IDV4KUP",
     "IDV6AIS",
     "IDV6FNW",
@@ -29120,6 +29123,9 @@
       "discord:b5afec6f171f5fb22634"
     ],
     "ID1DQREA": [
+      "discord:b5afec6f171f5fb22634"
+    ],
+    "ID1DQRNQ": [
       "discord:b5afec6f171f5fb22634"
     ]
   },
