@@ -92,6 +92,29 @@ jobs:
           retention-days: 1
           if-no-files-found: warn
 
+      - name: Przygotuj zapis historii ofert
+        run: |
+          cat > "$RUNNER_TEMP/save-offers.sh" <<'BASH'
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/seen*.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Aktualizacja zapisanych ofert"
+          fi
+          if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then exit 0; fi
+          for delay in 0 3 9; do
+            sleep "$delay"
+            if git pull --rebase origin main; then
+              if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || git push origin HEAD:main; then exit 0; fi
+            elif [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; then
+              git rebase --abort
+            fi
+          done
+          echo "::warning::Nie udało się zapisać historii ofert po trzech próbach."
+          exit 1
+          BASH
+
       - name: Sprawdź nowe ogłoszenia
         id: scan
         continue-on-error: true
@@ -102,12 +125,11 @@ jobs:
           else
             # One runner performs repeated checks; delayed cron starts no longer
             # determine the interval between scans during an active session.
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             minutes="$SESSION_MINUTES"
             if ! [[ "$minutes" =~ ^[0-9]+$ ]] || [ "$minutes" -lt 1 ] || [ "$minutes" -gt 300 ]; then minutes=300; fi
             deadline=$((SECONDS + minutes * 60))
             last_code=0
+            tested_commit=$(git rev-parse HEAD)
             while [ "$SECONDS" -lt "$deadline" ]; do
               started=$SECONDS
               if python run_profiles.py; then
@@ -119,17 +141,15 @@ jobs:
               # Detect source changes before a state push can pull them locally.
               git fetch origin main --quiet
               source_changed=false
-              if ! git diff --quiet HEAD origin/main -- bot.py polling.py run_profiles.py config.json requirements.txt data/wilkowice_places.json tests .github/workflows/monitor.yml; then
+              if ! git diff --quiet "$tested_commit" origin/main -- bot.py polling.py run_profiles.py config.json requirements.txt data/wilkowice_places.json tests discord-control.mjs discord-control.test.mjs .github/workflows/monitor.yml; then
                 source_changed=true
               fi
-              git add data/seen*.json
-              if ! git diff --cached --quiet; then
-                git commit -m "Aktualizacja zapisanych ofert"
-                git pull --rebase origin main
-                git push
+              if ! bash "$RUNNER_TEMP/save-offers.sh"; then
+                echo "::warning::Wstrzymuję skanowanie do czasu końcowej próby zapisu historii."
+                break
               fi
               # Restart through the tested checkout instead of running newly pulled code.
-              if [ "$source_changed" = "true" ]; then break; fi
+              if [ "$source_changed" = "true" ] || ! git diff --quiet "$tested_commit" HEAD -- bot.py polling.py run_profiles.py config.json requirements.txt data/wilkowice_places.json tests discord-control.mjs discord-control.test.mjs .github/workflows/monitor.yml; then break; fi
               delay=$((60 - (SECONDS - started)))
               if [ "$delay" -gt 0 ]; then sleep "$delay"; fi
             done
@@ -138,21 +158,19 @@ jobs:
 
       - name: Zapisz wykryte ogłoszenia
         if: ${{ always() && steps.scan.outcome != 'skipped' && inputs.test_discord != true }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/seen*.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Aktualizacja zapisanych ofert"
-            git pull --rebase origin main
-            git push
-          fi
+        id: save_history
+        run: bash "$RUNNER_TEMP/save-offers.sh"
 
       - name: Wynik sprawdzenia
         if: always()
         env:
+          SAVE_OUTCOME: ${{ steps.save_history.outcome }}
           SCAN_OUTCOME: ${{ steps.scan.outcome }}
         run: |
+          if [ "$SAVE_OUTCOME" = "failure" ]; then
+            echo "### GitHub nie zapisał historii ofert mimo ponowień" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           if [ "$SCAN_OUTCOME" != "success" ]; then
             echo '### Monitor nie potwierdził poprawnego działania' >> "$GITHUB_STEP_SUMMARY"
             echo 'Sprawdź log kroku Sprawdź nowe ogłoszenia. HTTP 403 oznacza odmowę dostępu OLX. Sam zielony test parsera nie potwierdza dostępu do OLX ani wysłania alertów.' >> "$GITHUB_STEP_SUMMARY"
