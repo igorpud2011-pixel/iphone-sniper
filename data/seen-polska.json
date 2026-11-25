@@ -1,15 +1,6 @@
 {
   "initialized": true,
   "seen_ids": [
-    "ID1BZUYU",
-    "ID1DNFHT",
-    "ID11KBVI",
-    "ID199AVG",
-    "ID1DNFB7",
-    "ID13FCHE",
-    "ID1DNF5S",
-    "ID1CTRPK",
-    "ID1DNF3W",
     "ID1D8LOK",
     "ID1DNF89",
     "ID10GYLW",
@@ -12000,7 +11991,16 @@
     "ID1DH2WT",
     "ID18UDZW",
     "ID1CQ4IK",
-    "ID165XWS"
+    "ID165XWS",
+    "ID1DQPA1",
+    "ID1DQPJ4",
+    "ID1DQPBF",
+    "ID1DKVUB",
+    "ID1BCBI9",
+    "ID1DQPAV",
+    "ID197KPR",
+    "ID1DQP1R",
+    "ID1DQOAK"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0&page=2&search%5Bprivate_business%5D=private",
@@ -17249,14 +17249,11 @@
     "ID1DQOGX",
     "ID1DNUYX",
     "ID1DQOHD",
-    "ID1DQOES"
+    "ID1DQOES",
+    "ID1DQPBF",
+    "ID197KPR"
   ],
   "rejected_ids": [
-    "ID1BZDKO",
-    "ID1BZDQX",
-    "ID1BZDRQ",
-    "ID1BZDRV",
-    "ID1BZDSM",
     "ID1BZDTB",
     "ID1BZDUR",
     "ID1BZDZJ",
@@ -27609,6 +27606,7 @@
     "ID1DQO5X",
     "ID1DQO6H",
     "ID1DQO7A",
+    "ID1DQOAK",
     "ID1DQOAR",
     "ID1DQOBC",
     "ID1DQOBO",
@@ -27633,11 +27631,14 @@
     "ID1DQOXR",
     "ID1DQOZK",
     "ID1DQP02",
+    "ID1DQP1R",
     "ID1DQP2J",
     "ID1DQP55",
     "ID1DQP9N",
     "ID1DQP9X",
+    "ID1DQPA1",
     "ID1DQPAO",
+    "ID1DQPAV",
     "ID1DQPCE",
     "ID1DQPD4",
     "ID1DQPDI",
@@ -27647,6 +27648,7 @@
     "ID1DQPFB",
     "ID1DQPHA",
     "ID1DQPHD",
+    "ID1DQPJ4",
     "ID1DQPK6",
     "ID1DQPKO",
     "ID1DQPLB",
@@ -29430,6 +29432,9 @@
       "discord:b5afec6f171f5fb22634"
     ],
     "ID1DQOES": [
+      "discord:b5afec6f171f5fb22634"
+    ],
+    "ID197KPR": [
       "discord:b5afec6f171f5fb22634"
     ]
   },
