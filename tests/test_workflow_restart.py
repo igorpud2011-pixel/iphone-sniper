@@ -6,9 +6,9 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 
-def scanner_script():
+def workflow_script(first_line):
     lines=(ROOT/'.github/workflows/monitor.yml').read_text().splitlines()
-    start=next(i for i,line in enumerate(lines) if line.strip()=='if [ "$TEST_DISCORD" = "true" ]; then')
+    start=next(i for i,line in enumerate(lines) if line.strip()==first_line)
     block=[]
     for line in lines[start:]:
         if line.strip() and not line.startswith('          '):break
@@ -26,14 +26,30 @@ if [ "$1" = diff ] && [ "$2" = --quiet ]; then
   if [ -e "$TEST_ROOT/pulled" ]; then exit 0; else exit 1; fi
 fi
 if [ "$1" = diff ] && [ "$2" = --cached ]; then exit 1; fi
+if [ "$1" = rev-parse ]; then
+  case "$2" in HEAD) echo local;; origin/main) echo remote;; esac
+fi
 if [ "$1" = pull ]; then touch "$TEST_ROOT/pulled"; fi
+if [ "$1" = push ]; then
+  echo push >> "$TEST_ROOT/pushes"
+  if [ "$(wc -l < "$TEST_ROOT/pushes")" -eq 1 ]; then
+    echo "Internal Server Error" >&2
+    exit 1
+  fi
+fi
 exit 0
 ''')
                 fake_python=folder/'python'
                 fake_python.write_text('#!/bin/bash\necho scan >> "$TEST_ROOT/scans"\nexit "$TEST_SCAN_CODE"\n')
                 fake_git.chmod(0o755);fake_python.chmod(0o755)
-                env={**os.environ,'PATH':str(folder)+os.pathsep+os.environ['PATH'],'TEST_ROOT':tmp,'TEST_SCAN_CODE':str(scan_code),'TEST_DISCORD':'false','SESSION_MINUTES':'1'}
-                result=subprocess.run(['bash','-e'],input=scanner_script(),text=True,env=env,cwd=tmp,capture_output=True,timeout=4)
+                fake_sleep=folder/'sleep'
+                fake_sleep.write_text('#!/bin/bash\nexit 0\n')
+                fake_sleep.chmod(0o755)
+                env={**os.environ,'PATH':str(folder)+os.pathsep+os.environ['PATH'],'RUNNER_TEMP':tmp,'TEST_ROOT':tmp,'TEST_SCAN_CODE':str(scan_code),'TEST_DISCORD':'false','SESSION_MINUTES':'1'}
+                prepare=workflow_script('cat > "$RUNNER_TEMP/save-offers.sh" <<\'BASH\'')
+                subprocess.run(['bash','-e'],input=prepare,text=True,env=env,cwd=tmp,check=True,timeout=4)
+                result=subprocess.run(['bash','-e'],input=workflow_script('if [ "$TEST_DISCORD" = "true" ]; then'),text=True,env=env,cwd=tmp,capture_output=True,timeout=4)
                 self.assertEqual(result.returncode,scan_code,result.stderr)
                 self.assertEqual((folder/'scans').read_text().splitlines(),['scan'])
                 self.assertTrue((folder/'pulled').exists())
+                self.assertEqual((folder/'pushes').read_text().splitlines(),['push','push'])
