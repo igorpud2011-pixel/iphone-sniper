@@ -1,20 +1,6 @@
 {
   "initialized": true,
   "seen_ids": [
-    "ID1DNCXU",
-    "ID1DNCUL",
-    "ID17H9LJ",
-    "ID1C65QN",
-    "ID1DNCMY",
-    "ID1CTLSK",
-    "ID181XW7",
-    "ID1DND3Y",
-    "ID1DNCXA",
-    "ID19VOU9",
-    "IDRNVVN",
-    "ID1DND9S",
-    "ID1BZTGN",
-    "ID1DND6L",
     "ID1DND3R",
     "ID1DND0B",
     "ID1DF8HM",
@@ -12000,7 +11986,21 @@
     "ID1CY28O",
     "ID1DQMKO",
     "ID1DQMG5",
-    "ID19CCWD"
+    "ID19CCWD",
+    "ID1CY2SB",
+    "ID1074XH",
+    "ID14YI6W",
+    "ID1DQMHL",
+    "ID12NLHZ",
+    "ID1DQM9H",
+    "ID1BCQ48",
+    "ID1DQMCJ",
+    "IDOORAM",
+    "ID1CVASH",
+    "ID1BURZS",
+    "ID1DQMYD",
+    "ID19CDJW",
+    "ID14GKCX"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0&page=2&search%5Bprivate_business%5D=private",
@@ -17231,16 +17231,11 @@
     "ID1DQM7U",
     "ID1DQLY5",
     "ID1DQMSI",
-    "ID1DQMKO"
+    "ID1DQMKO",
+    "ID1074XH",
+    "ID19CDJW"
   ],
   "rejected_ids": [
-    "ID1BYZX8",
-    "ID1BYZYZ",
-    "ID1BYZZO",
-    "ID1BZ0AW",
-    "ID1BZ0E8",
-    "ID1BZ0Y8",
-    "ID1BZ1JB",
     "ID1BZ20V",
     "ID1BZ29K",
     "ID1BZ2HZ",
@@ -19271,6 +19266,7 @@
     "ID1CVAG1",
     "ID1CVAN7",
     "ID1CVAOH",
+    "ID1CVASH",
     "ID1CVB6B",
     "ID1CVB9U",
     "ID1CVBAG",
@@ -19707,6 +19703,7 @@
     "ID1CY28O",
     "ID1CY2C7",
     "ID1CY2JK",
+    "ID1CY2SB",
     "ID1CY8YU",
     "ID1CYADU",
     "ID1CYAII",
@@ -27557,9 +27554,12 @@
     "ID1DQM3V",
     "ID1DQM4Y",
     "ID1DQM8Y",
+    "ID1DQM9H",
     "ID1DQMAA",
     "ID1DQMAF",
+    "ID1DQMCJ",
     "ID1DQMG5",
+    "ID1DQMHL",
     "ID1DQMIW",
     "ID1DQMJA",
     "ID1DQMJM",
@@ -27576,6 +27576,7 @@
     "ID1DQMVY",
     "ID1DQMW5",
     "ID1DQMWS",
+    "ID1DQMYD",
     "ID1DQN0O",
     "ID1DQN28",
     "ID1DQN2C",
@@ -28114,6 +28115,7 @@
     "IDONQMB",
     "IDONQPL",
     "IDOOP78",
+    "IDOORAM",
     "IDOPADQ",
     "IDOPCAQ",
     "IDOPPQJ",
@@ -29406,6 +29408,9 @@
       "discord:b5afec6f171f5fb22634"
     ],
     "ID1DQK8F": [
+      "discord:b5afec6f171f5fb22634"
+    ],
+    "ID19CDJW": [
       "discord:b5afec6f171f5fb22634"
     ]
   },
