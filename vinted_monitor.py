@@ -269,7 +269,6 @@ def scan(hook, settings, report, *, front_only=False, phones=False, window=False
     fetched = set()
     processed = set()
     checked = 0
-    fresh = 0
     pending = metadata.setdefault("pending", {})
     pages = 1 if front_only else CATALOG_PAGES
     report["searches_total"] = pages - 1 + (1 + int(phones)) * (3 if window else 1)
@@ -332,7 +331,7 @@ def scan(hook, settings, report, *, front_only=False, phones=False, window=False
     metadata.pop("retry_until", None)
 
     def consume(page, focused, result):
-        nonlocal checked, fresh, blocked
+        nonlocal checked, blocked
         cards, error, observed = result
         if error:
             status = error.code if isinstance(error, HTTPError) else None
@@ -366,7 +365,6 @@ def scan(hook, settings, report, *, front_only=False, phones=False, window=False
             if (item_id, details) in processed:
                 continue
             processed.add((item_id, details))
-            fresh += 1
             deliver(item_id, url, details, observed)
         if initial_page:
             baseline_pages.remove(page)
@@ -396,7 +394,6 @@ def scan(hook, settings, report, *, front_only=False, phones=False, window=False
     if not front_only and not report["errors"]:
         legacy_cutoff = None
     checkpoint()
-    print(f"Karty: {len(fetched)}. Nowe pozycje: {fresh}. Wysłane alerty Vinted: {report['alerts']}.", flush=True)
 
 
 def run_scan(hook, window):
@@ -412,8 +409,15 @@ def run_scan(hook, window):
     except (Exception, SystemExit) as error:
         message = str(error) if isinstance(error, (SystemExit, RuntimeError)) else type(error).__name__
         report["errors"].append(message)
-        print(f"Skan Vinted nieudany: {message}", flush=True)
     finally:
+        print(
+            f"Vinted: {report['status']}; odczyty {report['searches_ok']}/{report['searches_total']}; "
+            f"karty {report['fetched']}; pasujące do wysyłki {report['matched']}; "
+            f"potwierdzone przez Discord {report['alerts']}.",
+            flush=True,
+        )
+        for error in dict.fromkeys(report["errors"]):
+            print(f"Vinted: {error}", flush=True)
         report.update(finished_at=int(time.time()), duration_seconds=round(time.monotonic()-started, 2))
         try:
             settings_request("health", report)
