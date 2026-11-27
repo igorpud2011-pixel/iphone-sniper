@@ -1,7 +1,6 @@
 {
   "initialized": true,
   "seen_ids": [
-    "ID19BZQ7",
     "ID1CKF55",
     "IDYYF7I",
     "ID1DP40R",
@@ -12000,7 +11999,8 @@
     "ID1DTYX0",
     "ID1DTZ3V",
     "ID1DTZ81",
-    "ID1DJHVE"
+    "ID1DJHVE",
+    "ID1DTZHQ"
   ],
   "initialized_searches": [
     "https://www.olx.pl/elektronika/telefony/q-iphone-11/?search%5Border%5D=created_at%3Adesc&search%5Bfilter_float_price%3Afrom%5D=0&page=2&search%5Bprivate_business%5D=private",
@@ -18277,7 +18277,6 @@
     "ID1DTZ3V"
   ],
   "rejected_ids": [
-    "ID1CZ9HE",
     "ID1CZ9HX",
     "ID1CZ9V8",
     "ID1CZA0U",
@@ -28468,6 +28467,7 @@
     "ID1DTYX0",
     "ID1DTYYV",
     "ID1DTZ81",
+    "ID1DTZHQ",
     "ID4CZUL",
     "ID80DZB",
     "ID89E4T",
